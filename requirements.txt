@@ -1,0 +1,7 @@
+ib_insync
+pandas
+sqlalchemy
+psycopg2-binary
+python-dotenv
+requests
+schedule
