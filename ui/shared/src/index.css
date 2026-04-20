@@ -1438,3 +1438,242 @@ body {
   gap: 12px;
   margin-top: 4px;
 }
+
+.sidebar-link-btn {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.sidebar-link-btn {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.sidebar-link-btn.active {
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.24);
+}
+
+.wallet-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.wallet-mode-tabs,
+.wallet-range-tabs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wallet-tab-btn,
+.wallet-range-btn {
+  border: 1px solid rgba(157, 184, 214, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e6eef8;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.wallet-tab-btn.active,
+.wallet-range-btn.active {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(59, 130, 246, 0.28);
+}
+
+.wallet-actual-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.wallet-actual-card {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(10, 23, 40, 0.78);
+  border: 1px solid rgba(157, 184, 214, 0.14);
+}
+
+.wallet-actual-label {
+  font-size: 0.84rem;
+  color: #91a9c2;
+}
+
+.wallet-actual-value {
+  margin-top: 8px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.wallet-actual-note {
+  margin-top: 8px;
+  font-size: 0.84rem;
+  color: #b7c7d8;
+  line-height: 1.5;
+}
+
+.wallet-updated-line {
+  font-size: 0.9rem;
+  color: #b7c7d8;
+}
+
+.wallet-performance-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.wallet-performance-card {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(10, 23, 40, 0.78);
+  border: 1px solid rgba(157, 184, 214, 0.14);
+}
+
+.wallet-performance-title {
+  font-size: 0.8rem;
+  color: #91a9c2;
+}
+
+.wallet-performance-value {
+  margin-top: 6px;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.wallet-performance-value.positive {
+  color: #22c55e;
+}
+
+.wallet-performance-value.negative {
+  color: #ef4444;
+}
+
+.wallet-performance-sub {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: #b7c7d8;
+}
+
+.wallet-chart-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(10, 23, 40, 0.8);
+  border: 1px solid rgba(157, 184, 214, 0.14);
+}
+
+.wallet-chart-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 14px;
+}
+
+.wallet-chart-wrap {
+  width: 100%;
+  height: 420px;
+}
+
+@media (max-width: 1400px) {
+  .wallet-actual-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wallet-performance-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .wallet-actual-grid,
+  .wallet-performance-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.wallet-chart-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(10, 23, 40, 0.8);
+  border: 1px solid rgba(157, 184, 214, 0.14);
+}
+
+.wallet-chart-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 14px;
+}
+
+.wallet-chart-wrap {
+  width: 100%;
+  height: 420px;
+}
+
+.wallet-page-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.wallet-chart-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(10, 23, 40, 0.8);
+  border: 1px solid rgba(157, 184, 214, 0.14);
+  min-height: 520px;
+  flex: 0 0 auto;
+}
+
+.wallet-chart-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 14px;
+}
+
+.wallet-chart-wrap {
+  width: 100%;
+  height: 460px;
+  min-height: 460px;
+}
+
+.wallet-actual-grid,
+.wallet-performance-grid,
+.wallet-updated-line,
+.wallet-tabs-row {
+  flex: 0 0 auto;
+}
+
+.wallet-chart-wrap .recharts-surface {
+  overflow: visible;
+}
+
+.wallet-chart-wrap .recharts-cartesian-axis-tick-value {
+  fill: #94a3b8;
+  font-size: 12px;
+}
+
+.wallet-chart-wrap .recharts-legend-item-text {
+  color: #e2e8f0 !important;
+}
+
+.wallet-chart-wrap .recharts-line-curve {
+  stroke-opacity: 1 !important;
+}
+
+.wallet-chart-wrap .recharts-layer path.recharts-curve.recharts-line-curve {
+  stroke-width: 3px !important;
+}

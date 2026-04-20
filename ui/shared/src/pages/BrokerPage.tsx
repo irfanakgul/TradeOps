@@ -4,7 +4,8 @@ import Footer from '../components/Footer'
 import { useLanguage } from '../components/LanguageContext'
 import { useRuntime } from '../components/RuntimeContext'
 import { useAuth } from '../components/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import BrokerSidebar from '../components/BrokerSidebar'
 
 const LOCK_STORAGE_KEY = 'tradeops_broker_locked'
 
@@ -158,171 +159,60 @@ export default function BrokerPage() {
       <AppHeader />
 
       <main className="broker-layout">
-        <aside className="broker-sidebar">
-          
-
-          <div className="sidebar-section">
-            <div className="sidebar-title">
-              {language === 'tr' ? 'Yönetim' : 'Control'}
-            </div>
-
-            <button
-              type="button"
-              className="sidebar-primary-btn"
-              disabled={controlsBusy || twsRunning}
-              onClick={() =>
-                runAction(
-                  () => startTws(),
-                  language === 'tr'
-                    ? `TWS başlatıldı. Lütfen TWS uygulamasında giriş bilgilerinizle giriş yapın. Şu an ${status.ibkr_mode} modundasınız.`
-                    : `TWS started. Please sign in within the TWS application. Current trade mode is ${status.ibkr_mode}.`,
-                )
-              }
-            >
-              {language === 'tr' ? 'TWS Başlat' : 'Launch TWS'}
-            </button>
-
-            <div className="sidebar-double-row">
-              <button
-                type="button"
-                className="sidebar-stop-btn"
-                disabled={controlsBusy || !twsRunning}
-                onClick={() =>
-                  runAction(
-                    () => stopTws(),
-                    language === 'tr' ? 'TWS durduruldu.' : 'TWS stopped.',
-                  )
-                }
-              >
-                {language === 'tr' ? 'TWS Durdur' : 'Stop TWS'}
-              </button>
-
-              <button
-                type="button"
-                className="sidebar-secondary-btn"
-                disabled={controlsBusy}
-                onClick={() =>
-                  runAction(
-                    () => restartTws(),
-                    language === 'tr' ? 'TWS yeniden başlatıldı.' : 'TWS restarted.',
-                  )
-                }
-              >
-                {language === 'tr' ? 'TWS Restart' : 'TWS Restart'}
-              </button>
-            </div>
-
-            <button
-              type="button"
-              className="sidebar-primary-btn"
-              disabled={controlsBusy || serverRunning || serverStarting}
-              onClick={() =>
-                runAction(
-                  () => startServer(),
-                  language === 'tr'
-                    ? 'Server başlatıldı. Sürekli çalışma izleniyor.'
-                    : 'Server started. Continuous runtime is being monitored.',
-                )
-              }
-            >
-              {language === 'tr' ? 'Server Başlat' : 'Start Server'}
-            </button>
-
-            <div className="sidebar-double-row">
-  <button
-    type="button"
-    className="sidebar-stop-btn"
-    disabled={controlsBusy || !serverRunning}
-    onClick={() =>
-      runAction(
-        () => stopServer(),
-        language === 'tr' ? 'Server durduruldu.' : 'Server stopped.',
-      )
-    }
-  >
-    {language === 'tr' ? 'Server Durdur' : 'Stop Server'}
-  </button>
-
-  <button
-    type="button"
-    className="sidebar-secondary-btn"
-    disabled={controlsBusy}
-    onClick={() =>
-      runAction(
-        () => restartServer(),
-        language === 'tr'
-          ? 'Server yeniden başlatıldı.'
-          : 'Server restarted.',
-      )
-    }
-  >
-    {language === 'tr' ? 'Server Restart' : 'Server Restart'}
-  </button>
-</div>
-
-<button
-  type="button"
-  className="sidebar-secondary-btn"
-  disabled={controlsBusy}
-  onClick={handleRuntimeTest}
->
-  {language === 'tr' ? 'Server Test' : 'Runtime Test'}
-</button>
-</div>
-
-<div className="sidebar-divider" />
-
-<div className="sidebar-section sidebar-scroll-section">
-  <div className="sidebar-title">
-    {language === 'tr' ? 'Görünümler' : 'Views'}
-  </div>
-
-  <div className="sidebar-scroll-list">
-    <button type="button" className="sidebar-nav-btn">
-      {language === 'tr' ? 'Cüzdan Özeti' : 'Wallet Overview'}
-    </button>
-
-    <button type="button" className="sidebar-nav-btn">
-      {language === 'tr' ? 'Parametreler' : 'Parameters'}
-    </button>
-
-    <button type="button" className="sidebar-nav-btn">
-      {language === 'tr' ? 'Emirler' : 'Orders'}
-    </button>
-
-    <button type="button" className="sidebar-nav-btn">
-      {language === 'tr' ? 'Trade Aktivitesi' : 'Trade Activity'}
-    </button>
-
-    <button type="button" className="sidebar-nav-btn">
-      {language === 'tr' ? 'Sorun Bildir' : 'Report Issue'}
-    </button>
-  </div>
-</div>
-
-<div className="sidebar-double-row sidebar-bottom-actions">
-  <button
-    type="button"
-    className="sidebar-secondary-btn lock-btn"
-    onClick={() => {
-      setIsLocked(true)
-      setLockError('')
-      setLockPassword('')
-    }}
-  >
-    <span className="lock-btn-icon">🔑</span>
-    <span>{language === 'tr' ? 'Kilitle' : 'Lock'}</span>
-  </button>
-
-  <button
-    type="button"
-    className="sidebar-exit-btn"
-    onClick={() => setShowExitConfirm(true)}
-  >
-    EXIT
-  </button>
-</div>
-</aside>
+          <BrokerSidebar
+      activeItem="broker"
+      controlsBusy={controlsBusy}
+      twsRunning={twsRunning}
+      serverRunning={serverRunning}
+      serverStarting={serverStarting}
+      onStartTws={() =>
+        runAction(
+          () => startTws(),
+          language === 'tr'
+            ? `TWS başlatıldı. Lütfen TWS uygulamasında giriş bilgilerinizle giriş yapın. Şu an ${status.ibkr_mode} modundasınız.`
+            : `TWS started. Please sign in within the TWS application. Current trade mode is ${status.ibkr_mode}.`,
+        )
+      }
+      onStopTws={() =>
+        runAction(
+          () => stopTws(),
+          language === 'tr' ? 'TWS durduruldu.' : 'TWS stopped.',
+        )
+      }
+      onRestartTws={() =>
+        runAction(
+          () => restartTws(),
+          language === 'tr' ? 'TWS yeniden başlatıldı.' : 'TWS restarted.',
+        )
+      }
+      onStartServer={() =>
+        runAction(
+          () => startServer(),
+          language === 'tr'
+            ? 'Server başlatıldı. Sürekli çalışma izleniyor.'
+            : 'Server started. Continuous runtime is being monitored.',
+        )
+      }
+      onStopServer={() =>
+        runAction(
+          () => stopServer(),
+          language === 'tr' ? 'Server durduruldu.' : 'Server stopped.',
+        )
+      }
+      onRestartServer={() =>
+        runAction(
+          () => restartServer(),
+          language === 'tr' ? 'Server yeniden başlatıldı.' : 'Server restarted.',
+        )
+      }
+      onRuntimeTest={handleRuntimeTest}
+      onLock={() => {
+        setIsLocked(true)
+        setLockError('')
+        setLockPassword('')
+      }}
+      onExit={() => setShowExitConfirm(true)}
+    />
 
 <section className="broker-main">
   <div className="broker-summary-grid compact four-cols">

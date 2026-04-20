@@ -18,7 +18,10 @@ from ui_connection.ui_service.password_reset_service import (
     request_password_reset,
 )
 from ui_connection.runtime.runtime_manager import runtime_manager
-
+from ui_connection.ui_service.wallet_overview_service import (
+    WalletOverviewError,
+    get_wallet_overview,
+)
 
 class RegisterRequest(BaseModel):
     username: str
@@ -286,4 +289,24 @@ def runtime_logs_clear():
         raise HTTPException(
             status_code=500,
             detail={"message": f"Log clear failed: {str(exc)}"},
+        ) from exc
+    
+
+@app.get("/api/wallet-overview")
+def wallet_overview(username: str, ibkr_mode: str = "LIVE", chart_days: int = 30):
+    try:
+        return get_wallet_overview(
+            username=username,
+            ibkr_mode=ibkr_mode,
+            chart_days=chart_days,
+        )
+    except WalletOverviewError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Wallet overview failed: {str(exc)}"},
         ) from exc

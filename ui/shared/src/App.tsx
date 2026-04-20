@@ -10,6 +10,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import BrokerPage from './pages/BrokerPage'
 import UserPanelPage from './pages/UserPanelPage'
 import AdminPanelPage from './pages/AdminPanelPage'
+import WalletOverviewPage from './pages/WalletOverviewPage'
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
               <Route path="/broker" element={<BrokerPage />} />
               <Route path="/user-panel" element={<UserPanelPage />} />
               <Route path="/admin-panel" element={<AdminPanelPage />} />
+              <Route path="/wallet-overview" element={<WalletOverviewPage />} />
             </Routes>
           </BrowserRouter>
         </RuntimeProvider>
