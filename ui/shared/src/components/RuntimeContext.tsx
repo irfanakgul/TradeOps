@@ -12,6 +12,7 @@ type RuntimeStatus = {
   server_pid: number | null
   server_requested: boolean
   server_restart_count: number
+  server_retry_limit: number
   tws_status: 'running' | 'stopped'
   ibkr_mode: string
   app_timezone: string
@@ -27,9 +28,12 @@ type RuntimeContextType = {
   refreshLogs: () => Promise<void>
   startTws: () => Promise<RuntimeStatus>
   stopTws: () => Promise<RuntimeStatus>
+  restartTws: () => Promise<RuntimeStatus>
   startServer: () => Promise<RuntimeStatus>
   stopServer: () => Promise<RuntimeStatus>
+  restartServer: () => Promise<RuntimeStatus>
   stopAll: () => Promise<RuntimeStatus>
+  clearLogs: () => Promise<void>
   runRuntimeTest: () => Promise<any>
   verifyLockPassword: (password: string) => Promise<boolean>
 }
@@ -39,6 +43,7 @@ const defaultStatus: RuntimeStatus = {
   server_pid: null,
   server_requested: false,
   server_restart_count: 0,
+  server_retry_limit: 5,
   tws_status: 'stopped',
   ibkr_mode: 'UNKNOWN',
   app_timezone: '-',
@@ -100,6 +105,15 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
     return result
   }
 
+  async function restartTws() {
+    const result = await requestJson('http://127.0.0.1:8000/api/runtime/tws/restart', {
+      method: 'POST',
+    })
+    setStatus(result)
+    await refreshLogs()
+    return result
+  }
+
   async function startServer() {
     const result = await requestJson('http://127.0.0.1:8000/api/runtime/server/start', {
       method: 'POST',
@@ -118,6 +132,15 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
     return result
   }
 
+  async function restartServer() {
+    const result = await requestJson('http://127.0.0.1:8000/api/runtime/server/restart', {
+      method: 'POST',
+    })
+    setStatus(result)
+    await refreshLogs()
+    return result
+  }
+
   async function stopAll() {
     const result = await requestJson('http://127.0.0.1:8000/api/runtime/stop-all', {
       method: 'POST',
@@ -125,6 +148,13 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
     setStatus(result)
     await refreshLogs()
     return result
+  }
+
+  async function clearLogs() {
+    await requestJson('http://127.0.0.1:8000/api/runtime/logs/clear', {
+      method: 'POST',
+    })
+    await refreshLogs()
   }
 
   async function runRuntimeTest() {
@@ -165,9 +195,12 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
       refreshLogs,
       startTws,
       stopTws,
+      restartTws,
       startServer,
       stopServer,
+      restartServer,
       stopAll,
+      clearLogs,
       runRuntimeTest,
       verifyLockPassword,
     }),
