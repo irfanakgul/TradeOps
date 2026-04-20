@@ -29,6 +29,7 @@ class RuntimeManager:
         self._server_process: subprocess.Popen[str] | None = None
         self._server_requested = False
         self._server_restart_count = 0
+        self._server_retry_limit = 5
         self._watchdog_started = False
         self._reader_thread: threading.Thread | None = None
 
@@ -44,6 +45,12 @@ class RuntimeManager:
         line = f"[{timestamp}][{category}] {message}"
         self._logs.append(line)
         ui_log(category, message)
+
+    def clear_logs(self) -> dict[str, Any]:
+        with self._lock:
+            self._logs.clear()
+            self._append_log("RUNTIME", "Log console cleared.")
+            return {"success": True}
 
     def _is_tws_running(self) -> bool:
         try:
@@ -99,9 +106,9 @@ class RuntimeManager:
         )
 
         self._reader_thread = threading.Thread(
-          target=self._read_server_output,
-          args=(self._server_process,),
-          daemon=True,
+            target=self._read_server_output,
+            args=(self._server_process,),
+            daemon=True,
         )
         self._reader_thread.start()
 
@@ -126,12 +133,21 @@ class RuntimeManager:
                     if not self._server_requested:
                         continue
 
+                    if self._server_restart_count >= self._server_retry_limit:
+                        self._append_log(
+                            "WATCHDOG",
+                            f"Retry limit reached ({self._server_retry_limit}). Automatic restart stopped.",
+                        )
+                        self._server_requested = False
+                        continue
+
                     if self._server_process is None:
                         try:
                             self._append_log("WATCHDOG", "Server missing. Restarting.")
                             self._spawn_server_locked()
                             self._server_restart_count += 1
                         except Exception as exc:
+                            self._server_restart_count += 1
                             self._append_log("WATCHDOG", f"Restart failed: {exc}")
                         continue
 
@@ -146,6 +162,7 @@ class RuntimeManager:
                             self._spawn_server_locked()
                             self._server_restart_count += 1
                         except Exception as exc:
+                            self._server_restart_count += 1
                             self._append_log("WATCHDOG", f"Restart failed: {exc}")
 
         thread = threading.Thread(target=watchdog_loop, daemon=True)
@@ -179,6 +196,10 @@ class RuntimeManager:
 
     def stop_tws(self) -> dict[str, Any]:
         with self._lock:
+            if not self._is_tws_running():
+                self._append_log("TWS", "TWS already stopped.")
+                return self.get_status()
+
             subprocess.run(
                 ["osascript", "-e", 'tell application "Trader Workstation" to quit'],
                 capture_output=True,
@@ -203,14 +224,20 @@ class RuntimeManager:
             self._append_log("TWS", "TWS stopped successfully.")
             return self.get_status()
 
+    def restart_tws(self) -> dict[str, Any]:
+        with self._lock:
+            self.stop_tws()
+            time.sleep(1)
+            return self.start_tws()
+
     def start_server(self) -> dict[str, Any]:
         with self._lock:
-            self._server_requested = True
-
             if self._server_is_running():
                 self._append_log("SERVER", "Server is already running.")
                 return self.get_status()
 
+            self._server_requested = True
+            self._server_restart_count = 0
             self._spawn_server_locked()
             self._append_log("SERVER", "Server started successfully.")
             return self.get_status()
@@ -238,6 +265,12 @@ class RuntimeManager:
             self._append_log("SERVER", "Server stopped successfully.")
             self._server_process = None
             return self.get_status()
+
+    def restart_server(self) -> dict[str, Any]:
+        with self._lock:
+            self.stop_server()
+            time.sleep(1)
+            return self.start_server()
 
     def stop_all(self) -> dict[str, Any]:
         with self._lock:
@@ -307,6 +340,7 @@ class RuntimeManager:
                 "server_pid": self._server_process.pid if self._server_process and server_running else None,
                 "server_requested": self._server_requested,
                 "server_restart_count": self._server_restart_count,
+                "server_retry_limit": self._server_retry_limit,
                 "tws_status": "running" if tws_running else "stopped",
                 "ibkr_mode": os.getenv("IBKR_MODE", "UNKNOWN"),
                 "app_timezone": os.getenv("APP_TIMEZONE", "-"),

@@ -255,3 +255,35 @@ def runtime_unlock(request: LockPasswordRequest):
             status_code=500,
             detail={"message": f"Unlock failed: {str(exc)}"},
         ) from exc
+    
+@app.post("/api/runtime/tws/restart")
+def runtime_tws_restart():
+    try:
+        return runtime_manager.restart_tws()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"TWS restart failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/runtime/server/restart")
+def runtime_server_restart():
+    try:
+        return runtime_manager.restart_server()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Server restart failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/runtime/logs/clear")
+def runtime_logs_clear():
+    try:
+        return runtime_manager.clear_logs()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Log clear failed: {str(exc)}"},
+        ) from exc
