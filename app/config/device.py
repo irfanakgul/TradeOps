@@ -7,12 +7,12 @@ import subprocess
 from pathlib import Path
 
 
-def get_runtime_device_id(username: str) -> str:
+def get_runtime_device_id(username: str | None = None) -> str:
     machine_fingerprint = build_machine_fingerprint()
-    raw_value = f"{username.strip()}|{machine_fingerprint}"
-    device_hash = hashlib.sha256(raw_value.encode("utf-8")).hexdigest()[:12].upper()
-    safe_username = username.strip().replace(" ", "_")
-    return f"{safe_username}_{device_hash}"
+    device_hash = hashlib.sha256(
+        machine_fingerprint.encode("utf-8")
+    ).hexdigest()[:16].upper()
+    return f"DEVICE_{device_hash}"
 
 
 def build_machine_fingerprint() -> str:
