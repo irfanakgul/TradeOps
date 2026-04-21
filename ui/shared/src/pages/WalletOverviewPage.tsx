@@ -16,6 +16,7 @@ import {
     Legend,
   } from 'recharts'
 
+import { useSelectedUser } from '../components/SelectedUserContext'
 
 type WalletActual = {
   username: string
@@ -103,7 +104,9 @@ export default function WalletOverviewPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [controlsBusy, setControlsBusy] = useState(false)
-
+  const { availableUsers, selectedUsername, setSelectedUsername, canSelectAll } =
+  useSelectedUser()
+  
   async function runAction(action: () => Promise<any>) {
     if (controlsBusy) return
 
@@ -125,7 +128,9 @@ export default function WalletOverviewPage() {
       setError('')
 
       const params = new URLSearchParams({
-        username: user.username,
+        requesting_username: user.username,
+        requesting_user_type: user.userType,
+        selected_username: selectedUsername,
         ibkr_mode: activeTab,
         chart_days: String(chartDays),
       })
@@ -157,7 +162,7 @@ export default function WalletOverviewPage() {
 
   useEffect(() => {
     fetchData()
-  }, [user?.username, activeTab, chartDays])
+    }, [user?.username, user?.userType, selectedUsername, activeTab, chartDays])
 
   async function handleExit() {
     try {
@@ -217,6 +222,27 @@ export default function WalletOverviewPage() {
               >
                 PAPER
               </button>
+              <div className="wallet-user-filter">
+                <label className="wallet-user-filter-label">
+                    {language === 'tr' ? 'Kullanıcı' : 'User'}
+                </label>
+
+                {canSelectAll ? (
+                    <select
+                    className="wallet-user-select"
+                    value={selectedUsername}
+                    onChange={(e) => setSelectedUsername(e.target.value)}
+                    >
+                    {availableUsers.map((username) => (
+                        <option key={username} value={username}>
+                        {username}
+                        </option>
+                    ))}
+                    </select>
+                ) : (
+                    <div className="wallet-user-static">{selectedUsername}</div>
+                )}
+                </div>
             </div>
 
             <div className="wallet-range-tabs">

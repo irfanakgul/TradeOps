@@ -3,8 +3,9 @@ from __future__ import annotations
 import base64
 import hashlib
 from datetime import datetime
-from service.email_service import send_email, build_bilingual_body
+
 from config.device import get_runtime_device_id
+from service.email_service import send_email, build_bilingual_body
 from ui_connection.ui_repository.login_repository import (
     deactivate_user,
     get_user_by_email,
@@ -13,6 +14,8 @@ from ui_connection.ui_repository.login_repository import (
     reset_failed_login_count,
     update_last_login,
 )
+from ui_connection.ui_service.trade_config_service import sync_default_parameters_on_login
+
 
 MESSAGES = {
     "tr": {
@@ -33,7 +36,7 @@ MESSAGES = {
             "Tarih/Saat: {event_time}\n"
             "Device ID: {device_id}\n\n"
             "Eğer bu giriş size ait değilse lütfen bu e-postayı yanıtlayarak bize bilgi verin."
-        )
+        ),
     },
     "en": {
         "email_required": "Email is required.",
@@ -53,7 +56,7 @@ MESSAGES = {
             "Date/Time: {event_time}\n"
             "Device ID: {device_id}\n\n"
             "If this login was not made by you, please reply to this email and let us know."
-        )
+        ),
     },
 }
 
@@ -137,7 +140,8 @@ def login_user(payload: dict) -> dict:
 
     user = get_user_by_email(email)
 
-    current_device_id = get_runtime_device_id()
+    # kullanıcı bulunmasa da bir device id üretelim/loglayalım
+    current_device_id = get_runtime_device_id("unknown_user")
 
     if not user:
         insert_login_log(
@@ -155,6 +159,9 @@ def login_user(payload: dict) -> dict:
     registered_device_id = user["DEVICE_ID"]
     user_id = user["ID"]
     is_active = user["IS_ACTIVE"]
+
+    # gerçek username ile runtime device id yeniden üret
+    current_device_id = get_runtime_device_id(username)
 
     if is_active == "NEW_USER":
         insert_login_log(
@@ -248,6 +255,10 @@ def login_user(payload: dict) -> dict:
         failure_reason=None,
         responsibility_approved=responsibility_approved,
     )
+
+    # login sonrası default parametre sync
+    default_sync_info = sync_default_parameters_on_login(username)
+
     event_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     send_email(
@@ -277,4 +288,5 @@ def login_user(payload: dict) -> dict:
             "device_id": current_device_id,
             "user_type": user["USER_TYPE"],
         },
+        "default_sync_info": default_sync_info,
     }

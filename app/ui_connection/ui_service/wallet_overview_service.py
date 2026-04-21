@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from ui_connection.ui_service.ui_users_service import resolve_effective_username
 
 from ui_connection.ui_repository.wallet_overview_repository import (
     fetch_wallet_latest_row,
@@ -63,19 +64,31 @@ def _performance_block(rows: list[dict], days_label: str) -> dict:
     }
 
 
-def get_wallet_overview(username: str, ibkr_mode: str, chart_days: int) -> dict:
-    if not username.strip():
+def get_wallet_overview(
+    requesting_username: str,
+    requesting_user_type: str,
+    selected_username: str | None,
+    ibkr_mode: str,
+    chart_days: int,) -> dict:
+
+    effective_username = resolve_effective_username(
+        requesting_username=requesting_username,
+        requesting_user_type=requesting_user_type,
+        selected_username=selected_username,
+    )
+
+    if not effective_username.strip():
         raise WalletOverviewError("Username is required.", 400)
 
     safe_mode = ibkr_mode.upper().strip()
     if safe_mode not in {"LIVE", "PAPER"}:
         raise WalletOverviewError("Invalid IBKR mode.", 400)
 
-    latest_row_raw = fetch_wallet_latest_row(username=username, ibkr_mode=safe_mode)
+    latest_row_raw = fetch_wallet_latest_row(username=effective_username, ibkr_mode=safe_mode)
     latest_row = _format_row(latest_row_raw) if latest_row_raw else None
 
     chart_rows_raw = fetch_wallet_overview_rows(
-        username=username,
+        username=effective_username,
         ibkr_mode=safe_mode,
         days=chart_days,
     )
@@ -93,7 +106,7 @@ def get_wallet_overview(username: str, ibkr_mode: str, chart_days: int) -> dict:
     performance = {}
     for label, days in all_ranges.items():
         rows_raw = fetch_wallet_overview_rows(
-            username=username,
+            username=effective_username,
             ibkr_mode=safe_mode,
             days=days,
         )

@@ -15,7 +15,7 @@ type BrokerSidebarProps = {
   onRuntimeTest: () => void
   onLock: () => void
   onExit: () => void
-  activeItem?: 'broker' | 'wallet'
+  activeItem?: 'broker' | 'wallet' | 'orders' | 'trade-configurations'
 }
 
 export default function BrokerSidebar({
@@ -119,9 +119,14 @@ export default function BrokerSidebar({
         </div>
 
         <div className="sidebar-scroll-list">
-            <button type="button" className="sidebar-nav-btn">
-                {language === 'tr' ? 'Parametreler' : 'Parameters'}
-            </button>
+        <Link
+            to="/trade-configurations"
+            className={`sidebar-nav-btn sidebar-link-btn ${
+                activeItem === 'trade-configurations' ? 'active' : ''
+            }`}
+            >
+            {language === 'tr' ? 'Trade Configurations' : 'Trade Configurations'}
+            </Link>
 
           <Link
             to="/wallet-overview"
@@ -133,9 +138,14 @@ export default function BrokerSidebar({
           </Link>
 
 
-          <button type="button" className="sidebar-nav-btn">
+          <Link
+            to="/orders"
+            className={`sidebar-nav-btn sidebar-link-btn ${
+                activeItem === 'orders' ? 'active' : ''
+            }`}
+            >
             {language === 'tr' ? 'Emirler' : 'Orders'}
-          </button>
+            </Link>
 
           <button type="button" className="sidebar-nav-btn">
             {language === 'tr' ? 'Trade Aktivitesi' : 'Trade Activity'}

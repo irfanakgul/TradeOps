@@ -1,5 +1,8 @@
 from __future__ import annotations
-
+from ui_connection.ui_service.ui_users_service import (
+    UIUsersError,
+    get_visible_usernames,
+)
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -22,6 +25,18 @@ from ui_connection.ui_service.wallet_overview_service import (
     WalletOverviewError,
     get_wallet_overview,
 )
+from ui_connection.ui_service.orders_service import (
+    OrdersOverviewError,
+    get_orders_overview,
+)
+
+from ui_connection.ui_service.trade_config_service import (
+    TradeConfigError,
+    get_trade_configurations,
+    reset_trade_configurations_to_default,
+    save_trade_configurations,
+)
+
 
 class RegisterRequest(BaseModel):
     username: str
@@ -62,6 +77,18 @@ class ResetPasswordRequest(BaseModel):
 
 class LockPasswordRequest(BaseModel):
     password: str
+
+class TradeConfigRequest(BaseModel):
+    requesting_username: str
+    requesting_user_type: str
+    selected_username: str | None = None
+
+
+class TradeConfigSaveRequest(BaseModel):
+    requesting_username: str
+    requesting_user_type: str
+    selected_username: str | None = None
+    sections: list
 
 
 app = FastAPI(title="TradeOPS UI API")
@@ -293,10 +320,18 @@ def runtime_logs_clear():
     
 
 @app.get("/api/wallet-overview")
-def wallet_overview(username: str, ibkr_mode: str = "LIVE", chart_days: int = 30):
+def wallet_overview(
+    requesting_username: str,
+    requesting_user_type: str,
+    selected_username: str | None = None,
+    ibkr_mode: str = "LIVE",
+    chart_days: int = 30,
+):
     try:
         return get_wallet_overview(
-            username=username,
+            requesting_username=requesting_username,
+            requesting_user_type=requesting_user_type,
+            selected_username=selected_username,
             ibkr_mode=ibkr_mode,
             chart_days=chart_days,
         )
@@ -309,4 +344,112 @@ def wallet_overview(username: str, ibkr_mode: str = "LIVE", chart_days: int = 30
         raise HTTPException(
             status_code=500,
             detail={"message": f"Wallet overview failed: {str(exc)}"},
+        ) from exc
+    
+@app.get("/api/ui/users")
+def ui_users(requesting_username: str, requesting_user_type: str):
+    try:
+        return get_visible_usernames(
+            requesting_username=requesting_username,
+            requesting_user_type=requesting_user_type,
+        )
+    except UIUsersError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"User list failed: {str(exc)}"},
+        ) from exc
+    
+
+@app.get("/api/orders-overview")
+def orders_overview(
+    requesting_username: str,
+    requesting_user_type: str,
+    selected_username: str | None = None,
+    ibkr_mode: str = "LIVE",
+):
+    try:
+        return get_orders_overview(
+            requesting_username=requesting_username,
+            requesting_user_type=requesting_user_type,
+            selected_username=selected_username,
+            ibkr_mode=ibkr_mode,
+        )
+    except OrdersOverviewError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Orders overview failed: {str(exc)}"},
+        ) from exc
+    
+@app.get("/api/trade-configurations")
+def trade_configurations(
+    requesting_username: str,
+    requesting_user_type: str,
+    selected_username: str | None = None,
+):
+    try:
+        return get_trade_configurations(
+            requesting_username=requesting_username,
+            requesting_user_type=requesting_user_type,
+            selected_username=selected_username,
+        )
+    except TradeConfigError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Trade configurations failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/trade-configurations/save")
+def trade_configurations_save(request: TradeConfigSaveRequest):
+    try:
+        return save_trade_configurations(
+            requesting_username=request.requesting_username,
+            requesting_user_type=request.requesting_user_type,
+            selected_username=request.selected_username,
+            payload={"sections": request.sections},
+        )
+    except TradeConfigError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Trade configuration save failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/trade-configurations/reset-defaults")
+def trade_configurations_reset(request: TradeConfigRequest):
+    try:
+        return reset_trade_configurations_to_default(
+            requesting_username=request.requesting_username,
+            requesting_user_type=request.requesting_user_type,
+            selected_username=request.selected_username,
+        )
+    except TradeConfigError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Trade configuration reset failed: {str(exc)}"},
         ) from exc
