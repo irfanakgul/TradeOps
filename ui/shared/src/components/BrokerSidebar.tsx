@@ -148,7 +148,7 @@ export default function BrokerSidebar({
             </Link>
 
           <button type="button" className="sidebar-nav-btn">
-            {language === 'tr' ? 'Trade Aktivitesi' : 'Trade Activity'}
+            {language === 'tr' ? 'Ayarlar' : 'Settings'}
           </button>
 
           <button type="button" className="sidebar-nav-btn">
