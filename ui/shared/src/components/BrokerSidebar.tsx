@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useLanguage } from './LanguageContext'
+import { useAppLock } from './AppLockContext'
 
 type BrokerSidebarProps = {
   controlsBusy: boolean
@@ -35,6 +36,7 @@ export default function BrokerSidebar({
   activeItem = 'broker',
 }: BrokerSidebarProps) {
   const { language } = useLanguage()
+  const { lockApp } = useAppLock()
 
   return (
     <aside className="broker-sidebar">
@@ -119,14 +121,14 @@ export default function BrokerSidebar({
         </div>
 
         <div className="sidebar-scroll-list">
-        <Link
+          <Link
             to="/trade-configurations"
             className={`sidebar-nav-btn sidebar-link-btn ${
-                activeItem === 'trade-configurations' ? 'active' : ''
+              activeItem === 'trade-configurations' ? 'active' : ''
             }`}
-            >
+          >
             {language === 'tr' ? 'Trade Configurations' : 'Trade Configurations'}
-            </Link>
+          </Link>
 
           <Link
             to="/wallet-overview"
@@ -137,25 +139,18 @@ export default function BrokerSidebar({
             {language === 'tr' ? 'Cüzdan Özeti' : 'Wallet Overview'}
           </Link>
 
-
           <Link
             to="/orders"
             className={`sidebar-nav-btn sidebar-link-btn ${
-                activeItem === 'orders' ? 'active' : ''
+              activeItem === 'orders' ? 'active' : ''
             }`}
-            >
+          >
             {language === 'tr' ? 'Emirler' : 'Orders'}
-            </Link>
-
-          <button type="button" className="sidebar-nav-btn">
-            {language === 'tr' ? 'Ayarlar' : 'Settings'}
-          </button>
+          </Link>
 
           <button type="button" className="sidebar-nav-btn">
             {language === 'tr' ? 'Sorun Bildir' : 'Report Issue'}
           </button>
-
-          
         </div>
       </div>
 
@@ -163,7 +158,10 @@ export default function BrokerSidebar({
         <button
           type="button"
           className="sidebar-secondary-btn lock-btn"
-          onClick={onLock}
+          onClick={() => {
+            lockApp()
+            onLock()
+          }}
         >
           <span className="lock-btn-icon">🔑</span>
           <span>{language === 'tr' ? 'Kilitle' : 'Lock'}</span>

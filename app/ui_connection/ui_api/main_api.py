@@ -37,6 +37,33 @@ from ui_connection.ui_service.trade_config_service import (
     save_trade_configurations,
 )
 
+from ui_connection.ui_service.user_panel_service import (
+    UserPanelError,
+    delete_user_account,
+    get_user_panel_data,
+    update_user_panel_data,
+    verify_app_lock_password,
+)
+class UserPanelUpdateRequest(BaseModel):
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    date_of_birth: str
+    mobile_phone: str
+    password: str = ""
+    password_repeat: str = ""
+    app_lock_password: str = ""
+
+
+class UserPanelDeleteRequest(BaseModel):
+    username: str
+    password: str
+
+
+class AppUnlockRequest(BaseModel):
+    username: str
+    password: str
 
 class RegisterRequest(BaseModel):
     username: str
@@ -74,9 +101,6 @@ class ResetPasswordRequest(BaseModel):
     passwordRepeat: str
     language: str
 
-
-class LockPasswordRequest(BaseModel):
-    password: str
 
 class TradeConfigRequest(BaseModel):
     requesting_username: str
@@ -276,15 +300,6 @@ def runtime_stop_all():
         ) from exc
 
 
-@app.post("/api/runtime/unlock")
-def runtime_unlock(request: LockPasswordRequest):
-    try:
-        return {"success": runtime_manager.verify_lock_password(request.password)}
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={"message": f"Unlock failed: {str(exc)}"},
-        ) from exc
     
 @app.post("/api/runtime/tws/restart")
 def runtime_tws_restart():
@@ -452,4 +467,61 @@ def trade_configurations_reset(request: TradeConfigRequest):
         raise HTTPException(
             status_code=500,
             detail={"message": f"Trade configuration reset failed: {str(exc)}"},
+        ) from exc
+    
+@app.get("/api/user-panel")
+def user_panel(username: str):
+    try:
+        return get_user_panel_data(username)
+    except UserPanelError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": f"User panel failed: {str(exc)}"}) from exc
+
+
+@app.post("/api/user-panel/update")
+def user_panel_update(current_username: str, request: UserPanelUpdateRequest):
+    try:
+        return update_user_panel_data(current_username, request.model_dump())
+    except UserPanelError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": f"User update failed: {str(exc)}"}) from exc
+
+
+@app.post("/api/user-panel/delete")
+def user_panel_delete(request: UserPanelDeleteRequest):
+    try:
+        return delete_user_account(request.username, request.password)
+    except UserPanelError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": f"User delete failed: {str(exc)}"}) from exc
+
+
+@app.post("/api/runtime/unlock")
+def runtime_unlock(request: AppUnlockRequest):
+    try:
+        from ui_connection.ui_repository.user_panel_repository import get_registered_user_by_username
+
+        print("[LOCK API DEBUG] request username:", repr(request.username))
+        print("[LOCK API DEBUG] request password:", repr(request.password))
+
+        user = get_registered_user_by_username(request.username)
+
+        if not user:
+            print("[LOCK API DEBUG] user not found")
+            return {"success": False}
+
+        stored = (user.get("APP_LOCK_PASSWORD") or "").strip()
+
+        print("[LOCK API DEBUG] db username:", repr(user.get("USERNAME")))
+        print("[LOCK API DEBUG] db app lock:", repr(stored))
+        print("[LOCK API DEBUG] compare:", stored == request.password.strip())
+
+        return {"success": stored == request.password.strip()}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Unlock failed: {str(exc)}"},
         ) from exc

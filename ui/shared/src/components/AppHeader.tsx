@@ -146,7 +146,11 @@ export default function AppHeader() {
             </button>
           )}
 
-          <Link to="/user-panel" className="header-nav-btn header-user-btn">
+          <Link
+            to="/user-panel"
+            className="header-nav-btn header-user-btn header-user-btn-wide"
+            title={language === 'tr' ? 'Kullanıcı paneli için tıklayınız' : 'Click to open user panel'}
+          >
             <span className="header-user-name">{user?.username || 'Guest'}</span>
             <span className="header-user-role">{user?.userType || 'CLIENT'}</span>
           </Link>
