@@ -12,7 +12,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import BrokerPage from './pages/BrokerPage'
 import UserPanelPage from './pages/UserPanelPage'
-import AdminPanelPage from './pages/AdminPanelPage'
+
 import WalletOverviewPage from './pages/WalletOverviewPage'
 import OrdersPage from './pages/OrdersPage'
 import TradeConfigurationsPage from './pages/TradeConfigurationsPage'
@@ -23,6 +23,12 @@ import SimulationsPage from './pages/SimulationsPage'
 import AboutPage from './pages/AboutPage'
 import FocusCompaniesPage from './pages/FocusCompaniesPage'
 
+import AdminPanelPage from './pages/AdminPanelPage'
+import UsersDetailsPage from './pages/admin/UsersDetailsPage'
+import ContactFormsPage from './pages/admin/ContactFormsPage'
+import AdminParamsPage from './pages/admin/AdminParamsPage'
+import NotificationSenderPage from './pages/admin/NotificationSenderPage'
+import StatsPage from './pages/admin/StatsPage'
 
 function App() {
   return (
@@ -51,6 +57,15 @@ function App() {
                   <Route path="/simulations" element={<SimulationsPage />} />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/focus-companies" element={<FocusCompaniesPage />} />
+                  <Route path="/admin-panel" element={<AdminPanelPage />} />
+
+                  <Route path="/admin-panel" element={<AdminPanelPage />} />
+                  <Route path="/admin-panel/users-details" element={<UsersDetailsPage />} />
+                  <Route path="/admin-panel/contact-forms" element={<ContactFormsPage />} />
+                  <Route path="/admin-panel/admin-params" element={<AdminParamsPage />} />
+                  <Route path="/admin-panel/notification-sender" element={<NotificationSenderPage />} />
+                  <Route path="/admin-panel/stats" element={<StatsPage />} />
+
                 </Routes>
               </BrowserRouter>
             </AppLockProvider>

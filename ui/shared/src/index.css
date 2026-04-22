@@ -2573,3 +2573,85 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.admin-main-area {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.admin-subnav-wrap {
+  display: flex;
+  justify-content: flex-start;
+  margin: 2px 0 10px;
+}
+
+.admin-subnav {
+  width: fit-content;
+  max-width: 100%;
+  background: rgba(12, 24, 40, 0.72);
+  border: 1px solid rgba(157, 184, 214, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.admin-subnav-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-subnav-link {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  color: #9fb4c8;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: all 0.18s ease;
+}
+
+.admin-subnav-link:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-subnav-link.active {
+  color: #ffffff;
+  background: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(96, 165, 250, 0.16);
+}
+
+.admin-content-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-page-card {
+  flex: 1;
+  min-height: 0;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(157, 184, 214, 0.08);
+}
+
+.admin-page-title {
+  font-size: 1.04rem;
+  font-weight: 800;
+  color: #e7eef7;
+  margin-bottom: 10px;
+}
+
+.admin-page-note {
+  color: #8ea7bf;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
