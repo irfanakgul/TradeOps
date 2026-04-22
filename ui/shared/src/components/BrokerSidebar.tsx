@@ -148,9 +148,9 @@ export default function BrokerSidebar({
             {language === 'tr' ? 'Emirler' : 'Orders'}
           </Link>
 
-          <button type="button" className="sidebar-nav-btn">
+          <Link to="/contact" className="sidebar-nav-btn sidebar-link-btn">
             {language === 'tr' ? 'Sorun Bildir' : 'Report Issue'}
-          </button>
+          </Link>
         </div>
       </div>
 

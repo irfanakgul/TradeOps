@@ -137,13 +137,40 @@ def mark_user_related_trade_tables_deleted(username: str) -> None:
     ]
 
     engine = get_ui_engine()
+
     with engine.begin() as conn:
         for table_name in table_names:
-            conn.execute(
-                text(f"""
-                    UPDATE {table_name}
-                    SET is_active = 'deleted_account'
-                    WHERE username = :username
-                """),
-                {"username": username},
-            )
+            updated = False
+
+            # önce lowercase username dene
+            try:
+                conn.execute(
+                    text(f"""
+                        UPDATE {table_name}
+                        SET is_active = 'deleted_account'
+                        WHERE username = :username
+                    """),
+                    {"username": username},
+                )
+                updated = True
+            except Exception:
+                updated = False
+
+            # olmazsa uppercase USERNAME dene
+            if not updated:
+                try:
+                    conn.execute(
+                        text(f'''
+                            UPDATE {table_name}
+                            SET is_active = 'deleted_account'
+                            WHERE "USERNAME" = :username
+                        '''),
+                        {"username": username},
+                    )
+                    updated = True
+                except Exception:
+                    updated = False
+
+            # ikisi de olmadıysa sessiz geç
+            if not updated:
+                continue

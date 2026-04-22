@@ -1,206 +1,166 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import logo from '../../../assets/logo/tradeops-logo.png'
-import { useLanguage } from './LanguageContext'
+import { useLanguage, type Language } from './LanguageContext'
 import { useAuth } from './AuthContext'
 import { useRuntime } from './RuntimeContext'
-
-function formatHeaderTime(language: 'tr' | 'en') {
-  const now = new Date()
-  return now.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-GB', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function getStatusLabel(
-  language: 'tr' | 'en',
-  status: 'running' | 'starting' | 'stopped',
-) {
-  if (language === 'tr') {
-    if (status === 'running') return 'AKTİF'
-    if (status === 'starting') return 'BAŞLIYOR'
-    return 'KAPALI'
-  }
-
-  if (status === 'running') return 'RUNNING'
-  if (status === 'starting') return 'STARTING'
-  return 'STOPPED'
-}
 
 export default function AppHeader() {
   const { language, setLanguage, t } = useLanguage()
   const { user, setUser } = useAuth()
   const { status, stopAll } = useRuntime()
   const navigate = useNavigate()
+  const location = useLocation()
 
-  const [headerTime, setHeaderTime] = useState(() =>
-    formatHeaderTime(language as 'tr' | 'en'),
-  )
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const [logoutBusy, setLogoutBusy] = useState(false)
 
-  useEffect(() => {
-    setHeaderTime(formatHeaderTime(language as 'tr' | 'en'))
+  const isLoggedIn = Boolean(user?.username)
+  const isAppPage =
+    location.pathname === '/broker' ||
+    location.pathname === '/user-panel' ||
+    location.pathname === '/admin-panel' ||
+    location.pathname === '/wallet-overview' ||
+    location.pathname === '/orders' ||
+    location.pathname === '/trade-configurations'
 
-    const interval = window.setInterval(() => {
-      setHeaderTime(formatHeaderTime(language as 'tr' | 'en'))
-    }, 30000)
-
-    return () => window.clearInterval(interval)
-  }, [language])
-
-  async function handleConfirmedLogout() {
-    if (logoutBusy) return
-
+  async function handleLogoutConfirmed() {
     try {
-      setLogoutBusy(true)
-
-      try {
-        await stopAll()
-      } catch {
-        // stop all hata verse bile logout devam etsin
-      }
-
-      setUser(null)
-      setShowLogoutConfirm(false)
-      navigate('/login', { replace: true })
-    } finally {
-      setLogoutBusy(false)
+      await stopAll()
+    } catch {
+      //
     }
+
+    setUser(null)
+    setShowLogoutConfirm(false)
+    navigate('/', { replace: true })
   }
 
   return (
     <>
-      <header className="topbar app-header-fixed">
-        <div className="header-left">
-          <div className="brand-section">
-            <img src={logo} alt="TradeOPS Logo" className="logo" />
-            <div>
-              <h1 className="brand">{t.brand}</h1>
-              <p className="status-line">{headerTime}</p>
-            </div>
+      <header className="topbar">
+        <div className="brand-section">
+          <img src={logo} alt="TradeOPS Logo" className="logo" />
+          <div>
+            <h1 className="brand">{t.brand}</h1>
+            <p className="status-line">
+              {t.status}:{' '}
+              <span className="status-ready">
+                {isLoggedIn
+                  ? status.server_status === 'running'
+                    ? language === 'tr'
+                      ? 'Bağlantı Aktif'
+                      : 'Connected'
+                    : language === 'tr'
+                      ? 'Hazır'
+                      : 'Ready'
+                  : t.statusReady}
+              </span>
+            </p>
           </div>
         </div>
 
-        <div className="header-center">
-          <div className="electronic-status-panel">
-            <div className="electronic-status-item">
-              <span
-                className={`electronic-dot ${
-                  status.server_status === 'running'
-                    ? 'green'
-                    : status.server_status === 'starting'
-                      ? 'yellow'
-                      : 'red'
-                }`}
-              />
-              <span className="electronic-label">SERVER</span>
-              <span className="electronic-value">
-                {getStatusLabel(language as 'tr' | 'en', status.server_status)}
-              </span>
-              <span className="electronic-meta">R:{status.server_restart_count}</span>
+        {!isLoggedIn ? (
+          <div className="topbar-actions">
+            <div className="header-flag-switch" role="group" aria-label="Language">
+              <button
+                type="button"
+                className={`flag-btn ${language === 'tr' ? 'active' : ''}`}
+                onClick={() => setLanguage('tr' as Language)}
+                title="Türkçe"
+              >
+                🇹🇷
+              </button>
+
+              <button
+                type="button"
+                className={`flag-btn ${language === 'en' ? 'active' : ''}`}
+                onClick={() => setLanguage('en' as Language)}
+                title="English"
+              >
+                🇬🇧
+              </button>
             </div>
 
-            <div className="electronic-divider" />
+            <Link to="/login" className="secondary-btn link-btn">
+              {t.login}
+            </Link>
 
-            <div className="electronic-status-item">
-              <span
-                className={`electronic-dot ${
-                  status.tws_status === 'running' ? 'green' : 'red'
-                }`}
-              />
-              <span className="electronic-label">TWS</span>
-              <span className="electronic-value">
-                {getStatusLabel(
-                  language as 'tr' | 'en',
-                  status.tws_status === 'running' ? 'running' : 'stopped',
-                )}
-              </span>
-              <span className="electronic-meta">
-                {status.tws_path_exists ? 'PATH OK' : 'PATH ERR'}
-              </span>
-            </div>
+            <Link to="/register" className="primary-btn link-btn">
+              {t.register}
+            </Link>
           </div>
-        </div>
+        ) : (
+          <div className="topbar-actions">
+            {isAppPage && (
+              <Link to="/" className="secondary-btn link-btn">
+                {language === 'tr' ? 'Ana Sayfa' : 'Home'}
+              </Link>
+            )}
 
-        <div className="header-right">
-          <Link to="/" className="header-nav-btn">
-            {language === 'tr' ? 'Anasayfa' : 'Home'}
-          </Link>
+            <Link
+              to="/broker"
+              className={`header-nav-btn ${location.pathname === '/broker' ? 'active' : ''}`}
+            >
+              {language === 'tr' ? 'Broker Paneli' : 'Broker Panel'}
+            </Link>
 
-          <Link to="/broker" className="header-nav-btn">
-            {language === 'tr' ? 'Broker Paneli' : 'Broker Panel'}
-          </Link>
-
-          {user?.userType === 'ADMIN' ? (
-            <Link to="/admin-panel" className="header-nav-btn">
+            <Link
+              to="/admin-panel"
+              className={`header-nav-btn ${location.pathname === '/admin-panel' ? 'active' : ''}`}
+            >
               {language === 'tr' ? 'Admin Paneli' : 'Admin Panel'}
             </Link>
-          ) : (
-            <button type="button" className="header-nav-btn disabled-nav-btn" disabled>
-              {language === 'tr' ? 'Admin Paneli' : 'Admin Panel'}
-            </button>
-          )}
 
-          <Link
-            to="/user-panel"
-            className="header-nav-btn header-user-btn header-user-btn-wide"
-            title={language === 'tr' ? 'Kullanıcı paneli için tıklayınız' : 'Click to open user panel'}
-          >
-            <span className="header-user-name">{user?.username || 'Guest'}</span>
-            <span className="header-user-role">{user?.userType || 'CLIENT'}</span>
-          </Link>
+            <Link
+              to="/user-panel"
+              className="header-nav-btn header-user-btn header-user-btn-wide"
+              title={language === 'tr' ? 'Kullanıcı paneli için tıklayınız' : 'Click to open user panel'}
+            >
+              <span className="header-user-name">{user.username}</span>
+              <span className="header-user-role">{user.userType || 'CLIENT'}</span>
+            </Link>
 
-          <div className="header-flag-switch">
+            <div className="header-flag-switch" role="group" aria-label="Language">
+              <button
+                type="button"
+                className={`flag-btn ${language === 'tr' ? 'active' : ''}`}
+                onClick={() => setLanguage('tr' as Language)}
+                title="Türkçe"
+              >
+                🇹🇷
+              </button>
+
+              <button
+                type="button"
+                className={`flag-btn ${language === 'en' ? 'active' : ''}`}
+                onClick={() => setLanguage('en' as Language)}
+                title="English"
+              >
+                🇬🇧
+              </button>
+            </div>
+
             <button
               type="button"
-              className={`flag-btn ${language === 'tr' ? 'active' : ''}`}
-              onClick={() => setLanguage('tr')}
-              title="Turkish"
+              className="secondary-btn link-btn"
+              onClick={() => setShowLogoutConfirm(true)}
             >
-              🇹🇷
-            </button>
-            <button
-              type="button"
-              className={`flag-btn ${language === 'en' ? 'active' : ''}`}
-              onClick={() => setLanguage('en')}
-              title="English"
-            >
-              🇬🇧
+              Logout
             </button>
           </div>
-
-          <button
-            type="button"
-            className="primary-btn header-logout-btn"
-            disabled={logoutBusy}
-            onClick={() => setShowLogoutConfirm(true)}
-          >
-            {logoutBusy
-              ? language === 'tr'
-                ? 'Çıkılıyor...'
-                : 'Logging out...'
-              : language === 'tr'
-                ? 'Çıkış Yap'
-                : 'Log Out'}
-          </button>
-        </div>
+        )}
       </header>
 
       {showLogoutConfirm && (
         <div className="app-confirm-overlay">
           <div className="app-confirm-card">
             <div className="app-confirm-title">
-              {language === 'tr' ? 'Çıkış Onayı' : 'Logout Confirmation'}
+              {language === 'tr' ? 'Çıkış Yap' : 'Log Out'}
             </div>
 
             <div className="app-confirm-text">
               {language === 'tr'
-                ? 'Çıkış yaparsanız server ve TWS kapatılacaktır. Trade işlemleri otomatik olarak çalışmayacaktır. Devam etmek istiyor musunuz?'
+                ? 'Çıkış yaparsanız server ve TWS durdurulacaktır. Trade işlemleri otomatik olarak çalışmayacaktır. Devam etmek istiyor musunuz?'
                 : 'If you log out, both server and TWS will be stopped. Trade operations will no longer run automatically. Do you want to continue?'}
             </div>
 
@@ -208,7 +168,6 @@ export default function AppHeader() {
               <button
                 type="button"
                 className="secondary-btn"
-                disabled={logoutBusy}
                 onClick={() => setShowLogoutConfirm(false)}
               >
                 {language === 'tr' ? 'İptal' : 'Cancel'}
@@ -217,16 +176,9 @@ export default function AppHeader() {
               <button
                 type="button"
                 className="primary-btn"
-                disabled={logoutBusy}
-                onClick={handleConfirmedLogout}
+                onClick={handleLogoutConfirmed}
               >
-                {logoutBusy
-                  ? language === 'tr'
-                    ? 'Çıkış yapılıyor...'
-                    : 'Logging out...'
-                  : language === 'tr'
-                    ? 'Çıkış Yap'
-                    : 'Log Out'}
+                {language === 'tr' ? 'Çıkış Yap' : 'Log Out'}
               </button>
             </div>
           </div>

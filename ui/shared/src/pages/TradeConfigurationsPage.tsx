@@ -6,6 +6,7 @@ import { useLanguage } from '../components/LanguageContext'
 import { useAuth } from '../components/AuthContext'
 import { useRuntime } from '../components/RuntimeContext'
 import { useSelectedUser } from '../components/SelectedUserContext'
+import { useNavigate } from 'react-router-dom'
 
 type ConfigField = {
   key: string
@@ -58,6 +59,7 @@ export default function TradeConfigurationsPage() {
   const [controlsBusy, setControlsBusy] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [banner, setBanner] = useState('')
+  const navigate = useNavigate()
 
   const hasUnsavedChanges = useMemo(() => {
     return JSON.stringify(data) !== JSON.stringify(draft)
@@ -333,6 +335,13 @@ export default function TradeConfigurationsPage() {
               onClick={handleResetDefaults}
             >
               {language === 'tr' ? 'Reset Parameters' : 'Reset Parameters'}
+            </button>
+            <button
+              type="button"
+              className="focus-right-btn focus-companies-btn"
+              onClick={() => navigate('/focus-companies')}
+            >
+              FOCUS COMPANIES
             </button>
           </div>
 

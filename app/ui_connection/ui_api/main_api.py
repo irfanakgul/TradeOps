@@ -7,6 +7,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from ui_connection.ui_service.contact_form_service import (
+    ContactFormError,
+    get_contact_subject_options,
+    submit_contact_form,
+)
+
 from ui_connection.ui_service.registration_service import (
     RegistrationError,
     register_user,
@@ -44,6 +50,24 @@ from ui_connection.ui_service.user_panel_service import (
     update_user_panel_data,
     verify_app_lock_password,
 )
+from pydantic import BaseModel
+from typing import List, Optional
+from ui_connection.ui_service.focus_companies_service import (
+    FocusCompaniesError,
+    get_focus_companies_data,
+    save_focus_companies,
+)
+
+
+class FocusCompaniesRequest(BaseModel):
+    requesting_username: str
+    requesting_user_type: str
+    selected_username: str | None = None
+
+
+class FocusCompaniesSaveRequest(BaseModel):
+    changes: list[dict]
+
 class UserPanelUpdateRequest(BaseModel):
     username: str
     email: str
@@ -113,6 +137,16 @@ class TradeConfigSaveRequest(BaseModel):
     requesting_user_type: str
     selected_username: str | None = None
     sections: list
+
+class ContactFormRequest(BaseModel):
+    username: str | None = None
+    email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    mobile_phone: str | None = None
+    subject: str
+    message: str
+    language: str | None = None
 
 
 app = FastAPI(title="TradeOPS UI API")
@@ -524,4 +558,59 @@ def runtime_unlock(request: AppUnlockRequest):
         raise HTTPException(
             status_code=500,
             detail={"message": f"Unlock failed: {str(exc)}"},
+        ) from exc
+    
+@app.get("/api/contact-form/subjects")
+def contact_form_subjects():
+    return {"subjects": get_contact_subject_options()}
+
+
+@app.post("/api/contact-form/submit")
+def contact_form_submit(request: ContactFormRequest):
+    try:
+        return submit_contact_form(request.model_dump())
+    except ContactFormError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Contact form submit failed: {str(exc)}"},
+        ) from exc
+    
+@app.post("/api/focus-companies")
+def focus_companies(request: FocusCompaniesRequest):
+    try:
+        return get_focus_companies_data(
+            requesting_username=request.requesting_username,
+            requesting_user_type=request.requesting_user_type,
+            selected_username=request.selected_username,
+        )
+    except FocusCompaniesError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Focus companies failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/focus-companies/save")
+def focus_companies_save(request: FocusCompaniesSaveRequest):
+    try:
+        return save_focus_companies(request.changes)
+    except FocusCompaniesError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Focus companies save failed: {str(exc)}"},
         ) from exc

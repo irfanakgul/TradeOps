@@ -16,6 +16,13 @@ import AdminPanelPage from './pages/AdminPanelPage'
 import WalletOverviewPage from './pages/WalletOverviewPage'
 import OrdersPage from './pages/OrdersPage'
 import TradeConfigurationsPage from './pages/TradeConfigurationsPage'
+import ContactPage from './pages/ContactPage'
+
+import SubscriptionsPage from './pages/SubscriptionsPage'
+import SimulationsPage from './pages/SimulationsPage'
+import AboutPage from './pages/AboutPage'
+import FocusCompaniesPage from './pages/FocusCompaniesPage'
+
 
 function App() {
   return (
@@ -33,20 +40,17 @@ function App() {
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  <Route
-                    path="/contact"
-                    element={
-                      <div style={{ padding: 40, color: 'white' }}>
-                        Contact form will come next.
-                      </div>
-                    }
-                  />
+                  <Route path="/contact" element={<ContactPage />} />
                   <Route path="/broker" element={<BrokerPage />} />
                   <Route path="/user-panel" element={<UserPanelPage />} />
                   <Route path="/admin-panel" element={<AdminPanelPage />} />
                   <Route path="/wallet-overview" element={<WalletOverviewPage />} />
                   <Route path="/orders" element={<OrdersPage />} />
                   <Route path="/trade-configurations" element={<TradeConfigurationsPage />} />
+                  <Route path="/subscriptions" element={<SubscriptionsPage />} />
+                  <Route path="/simulations" element={<SimulationsPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="/focus-companies" element={<FocusCompaniesPage />} />
                 </Routes>
               </BrowserRouter>
             </AppLockProvider>

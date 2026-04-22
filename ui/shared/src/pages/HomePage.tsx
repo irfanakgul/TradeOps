@@ -1,55 +1,18 @@
 import { Link } from 'react-router-dom'
-import Footer from '../components/Footer'
-import AppHeader from '../components/AppHeader'
-import { useLanguage, type Language } from '../components/LanguageContext'
+import { useLanguage } from '../components/LanguageContext'
 import { useAuth } from '../components/AuthContext'
-import logo from '../../../assets/logo/tradeops-logo.png'
+import PublicPageLayout from '../components/PublicPageLayout'
 
 export default function HomePage() {
-  const { language, setLanguage, t } = useLanguage()
+  const { t } = useLanguage()
   const { user } = useAuth()
 
   return (
-    <div className="app-shell">
-      {user ? (
-        <AppHeader />
-      ) : (
-        <header className="topbar">
-          <div className="brand-section">
-            <img src={logo} alt="TradeOPS Logo" className="logo" />
-            <div>
-              <h1 className="brand">{t.brand}</h1>
-              <p className="status-line">
-                {t.status}: <span className="status-ready">{t.statusReady}</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="topbar-actions">
-            <label className="language-box">
-              <span>{t.language}</span>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value as Language)}
-              >
-                <option value="tr">TR</option>
-                <option value="en">EN</option>
-              </select>
-            </label>
-
-            <Link to="/login" className="secondary-btn link-btn">
-              {t.login}
-            </Link>
-            <Link to="/register" className="primary-btn link-btn">
-              {t.register}
-            </Link>
-          </div>
-        </header>
-      )}
-
+    <PublicPageLayout>
       <main className="hero-layout">
         <section className="hero-card">
           <div className="hero-pill">Trade Automation • IBKR • Monitoring</div>
+
           <h2>{t.homeHeroTitle}</h2>
           <p>{t.homeHeroSubtitle}</p>
 
@@ -58,6 +21,7 @@ export default function HomePage() {
               <Link to="/register" className="primary-btn link-btn">
                 {t.register}
               </Link>
+
               <Link to="/login" className="secondary-btn link-btn">
                 {t.login}
               </Link>
@@ -82,8 +46,6 @@ export default function HomePage() {
           </article>
         </section>
       </main>
-
-      <Footer />
-    </div>
+    </PublicPageLayout>
   )
 }
