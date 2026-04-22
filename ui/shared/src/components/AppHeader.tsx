@@ -4,6 +4,22 @@ import logo from '../../../assets/logo/tradeops-logo.png'
 import { useLanguage, type Language } from './LanguageContext'
 import { useAuth } from './AuthContext'
 import { useRuntime } from './RuntimeContext'
+import HeaderNotifications from './HeaderNotifications'
+
+function RuntimeDot({
+  active,
+  label,
+}: {
+  active: boolean
+  label: string
+}) {
+  return (
+    <div className="header-runtime-pill">
+      <span className={`header-runtime-dot ${active ? 'active' : 'inactive'}`} />
+      <span>{label}</span>
+    </div>
+  )
+}
 
 export default function AppHeader() {
   const { language, setLanguage, t } = useLanguage()
@@ -21,7 +37,10 @@ export default function AppHeader() {
     location.pathname === '/admin-panel' ||
     location.pathname === '/wallet-overview' ||
     location.pathname === '/orders' ||
-    location.pathname === '/trade-configurations'
+    location.pathname === '/trade-configurations' ||
+    location.pathname === '/focus-companies' ||
+    location.pathname === '/notifications' ||
+    location.pathname.startsWith('/admin-panel/')
 
   async function handleLogoutConfirmed() {
     try {
@@ -91,6 +110,17 @@ export default function AppHeader() {
           </div>
         ) : (
           <div className="topbar-actions">
+            <div className="header-runtime-group">
+              <RuntimeDot
+                active={status.server_status === 'running'}
+                label={language === 'tr' ? 'Server' : 'Server'}
+              />
+              <RuntimeDot
+                active={status.tws_status === 'running'}
+                label="TWS"
+              />
+            </div>
+
             {isAppPage && (
               <Link to="/" className="secondary-btn link-btn">
                 {language === 'tr' ? 'Ana Sayfa' : 'Home'}
@@ -106,7 +136,11 @@ export default function AppHeader() {
 
             <Link
               to="/admin-panel"
-              className={`header-nav-btn ${location.pathname === '/admin-panel' ? 'active' : ''}`}
+              className={`header-nav-btn ${
+                location.pathname === '/admin-panel' || location.pathname.startsWith('/admin-panel/')
+                  ? 'active'
+                  : ''
+              }`}
             >
               {language === 'tr' ? 'Admin Paneli' : 'Admin Panel'}
             </Link>
@@ -139,6 +173,8 @@ export default function AppHeader() {
                 🇬🇧
               </button>
             </div>
+
+            <HeaderNotifications />
 
             <button
               type="button"

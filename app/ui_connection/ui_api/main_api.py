@@ -1,62 +1,91 @@
 from __future__ import annotations
-from ui_connection.ui_service.ui_users_service import (
-    UIUsersError,
-    get_visible_usernames,
-)
-from fastapi import FastAPI, HTTPException
+
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from ui_connection.runtime.runtime_manager import runtime_manager
 from ui_connection.ui_service.contact_form_service import (
     ContactFormError,
     get_contact_subject_options,
     submit_contact_form,
 )
-
-from ui_connection.ui_service.registration_service import (
-    RegistrationError,
-    register_user,
+from ui_connection.ui_service.focus_companies_service import (
+    FocusCompaniesError,
+    get_focus_companies_data,
+    save_focus_companies,
 )
 from ui_connection.ui_service.login_service import (
     LoginError,
     login_user,
+)
+from ui_connection.ui_service.notification_service import (
+    NotificationError,
+    delete_admin_notification,
+    delete_notification_for_user,
+    dismiss_user_popup,
+    get_admin_notification_detail,
+    get_admin_notifications,
+    get_pending_popup,
+    get_user_notification_badge,
+    get_user_notifications,
+    read_user_notification,
+    send_notification,
+    unread_user_notification,
+)
+from ui_connection.ui_service.orders_service import (
+    OrdersOverviewError,
+    get_orders_overview,
 )
 from ui_connection.ui_service.password_reset_service import (
     PasswordResetError,
     confirm_password_reset,
     request_password_reset,
 )
-from ui_connection.runtime.runtime_manager import runtime_manager
-from ui_connection.ui_service.wallet_overview_service import (
-    WalletOverviewError,
-    get_wallet_overview,
+from ui_connection.ui_service.registration_service import (
+    RegistrationError,
+    register_user,
 )
-from ui_connection.ui_service.orders_service import (
-    OrdersOverviewError,
-    get_orders_overview,
-)
-
 from ui_connection.ui_service.trade_config_service import (
     TradeConfigError,
     get_trade_configurations,
     reset_trade_configurations_to_default,
     save_trade_configurations,
 )
-
+from ui_connection.ui_service.ui_users_service import (
+    UIUsersError,
+    get_visible_usernames,
+)
 from ui_connection.ui_service.user_panel_service import (
     UserPanelError,
     delete_user_account,
     get_user_panel_data,
     update_user_panel_data,
-    verify_app_lock_password,
 )
-from pydantic import BaseModel
-from typing import List, Optional
-from ui_connection.ui_service.focus_companies_service import (
-    FocusCompaniesError,
-    get_focus_companies_data,
-    save_focus_companies,
+from ui_connection.ui_service.wallet_overview_service import (
+    WalletOverviewError,
+    get_wallet_overview,
 )
+
+
+class NotificationTargetRequest(BaseModel):
+    target_type: str
+    target_value: str | None = None
+
+
+class NotificationSendRequest(BaseModel):
+    title: str
+    message: str
+    created_by: str
+    targets: list[NotificationTargetRequest]
+    attachment_name: str | None = None
+    attachment_path: str | None = None
+
+
+class NotificationUserActionRequest(BaseModel):
+    user_notification_id: int
 
 
 class FocusCompaniesRequest(BaseModel):
@@ -67,6 +96,7 @@ class FocusCompaniesRequest(BaseModel):
 
 class FocusCompaniesSaveRequest(BaseModel):
     changes: list[dict]
+
 
 class UserPanelUpdateRequest(BaseModel):
     username: str
@@ -88,6 +118,7 @@ class UserPanelDeleteRequest(BaseModel):
 class AppUnlockRequest(BaseModel):
     username: str
     password: str
+
 
 class RegisterRequest(BaseModel):
     username: str
@@ -137,6 +168,7 @@ class TradeConfigSaveRequest(BaseModel):
     requesting_user_type: str
     selected_username: str | None = None
     sections: list
+
 
 class ContactFormRequest(BaseModel):
     username: str | None = None
@@ -290,6 +322,17 @@ def runtime_tws_stop():
         ) from exc
 
 
+@app.post("/api/runtime/tws/restart")
+def runtime_tws_restart():
+    try:
+        return runtime_manager.restart_tws()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"TWS restart failed: {str(exc)}"},
+        ) from exc
+
+
 @app.post("/api/runtime/server/start")
 def runtime_server_start():
     try:
@@ -309,6 +352,17 @@ def runtime_server_stop():
         raise HTTPException(
             status_code=500,
             detail={"message": f"Server stop failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/runtime/server/restart")
+def runtime_server_restart():
+    try:
+        return runtime_manager.restart_server()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Server restart failed: {str(exc)}"},
         ) from exc
 
 
@@ -334,29 +388,6 @@ def runtime_stop_all():
         ) from exc
 
 
-    
-@app.post("/api/runtime/tws/restart")
-def runtime_tws_restart():
-    try:
-        return runtime_manager.restart_tws()
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={"message": f"TWS restart failed: {str(exc)}"},
-        ) from exc
-
-
-@app.post("/api/runtime/server/restart")
-def runtime_server_restart():
-    try:
-        return runtime_manager.restart_server()
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={"message": f"Server restart failed: {str(exc)}"},
-        ) from exc
-
-
 @app.post("/api/runtime/logs/clear")
 def runtime_logs_clear():
     try:
@@ -366,7 +397,7 @@ def runtime_logs_clear():
             status_code=500,
             detail={"message": f"Log clear failed: {str(exc)}"},
         ) from exc
-    
+
 
 @app.get("/api/wallet-overview")
 def wallet_overview(
@@ -394,7 +425,8 @@ def wallet_overview(
             status_code=500,
             detail={"message": f"Wallet overview failed: {str(exc)}"},
         ) from exc
-    
+
+
 @app.get("/api/ui/users")
 def ui_users(requesting_username: str, requesting_user_type: str):
     try:
@@ -412,7 +444,7 @@ def ui_users(requesting_username: str, requesting_user_type: str):
             status_code=500,
             detail={"message": f"User list failed: {str(exc)}"},
         ) from exc
-    
+
 
 @app.get("/api/orders-overview")
 def orders_overview(
@@ -438,7 +470,8 @@ def orders_overview(
             status_code=500,
             detail={"message": f"Orders overview failed: {str(exc)}"},
         ) from exc
-    
+
+
 @app.get("/api/trade-configurations")
 def trade_configurations(
     requesting_username: str,
@@ -502,15 +535,22 @@ def trade_configurations_reset(request: TradeConfigRequest):
             status_code=500,
             detail={"message": f"Trade configuration reset failed: {str(exc)}"},
         ) from exc
-    
+
+
 @app.get("/api/user-panel")
 def user_panel(username: str):
     try:
         return get_user_panel_data(username)
     except UserPanelError as exc:
-        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail={"message": f"User panel failed: {str(exc)}"}) from exc
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"User panel failed: {str(exc)}"},
+        ) from exc
 
 
 @app.post("/api/user-panel/update")
@@ -518,9 +558,15 @@ def user_panel_update(current_username: str, request: UserPanelUpdateRequest):
     try:
         return update_user_panel_data(current_username, request.model_dump())
     except UserPanelError as exc:
-        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail={"message": f"User update failed: {str(exc)}"}) from exc
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"User update failed: {str(exc)}"},
+        ) from exc
 
 
 @app.post("/api/user-panel/delete")
@@ -528,9 +574,15 @@ def user_panel_delete(request: UserPanelDeleteRequest):
     try:
         return delete_user_account(request.username, request.password)
     except UserPanelError as exc:
-        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail={"message": f"User delete failed: {str(exc)}"}) from exc
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"User delete failed: {str(exc)}"},
+        ) from exc
 
 
 @app.post("/api/runtime/unlock")
@@ -538,28 +590,19 @@ def runtime_unlock(request: AppUnlockRequest):
     try:
         from ui_connection.ui_repository.user_panel_repository import get_registered_user_by_username
 
-        print("[LOCK API DEBUG] request username:", repr(request.username))
-        print("[LOCK API DEBUG] request password:", repr(request.password))
-
         user = get_registered_user_by_username(request.username)
-
         if not user:
-            print("[LOCK API DEBUG] user not found")
             return {"success": False}
 
         stored = (user.get("APP_LOCK_PASSWORD") or "").strip()
-
-        print("[LOCK API DEBUG] db username:", repr(user.get("USERNAME")))
-        print("[LOCK API DEBUG] db app lock:", repr(stored))
-        print("[LOCK API DEBUG] compare:", stored == request.password.strip())
-
         return {"success": stored == request.password.strip()}
     except Exception as exc:
         raise HTTPException(
             status_code=500,
             detail={"message": f"Unlock failed: {str(exc)}"},
         ) from exc
-    
+
+
 @app.get("/api/contact-form/subjects")
 def contact_form_subjects():
     return {"subjects": get_contact_subject_options()}
@@ -579,7 +622,8 @@ def contact_form_submit(request: ContactFormRequest):
             status_code=500,
             detail={"message": f"Contact form submit failed: {str(exc)}"},
         ) from exc
-    
+
+
 @app.post("/api/focus-companies")
 def focus_companies(request: FocusCompaniesRequest):
     try:
@@ -613,4 +657,135 @@ def focus_companies_save(request: FocusCompaniesSaveRequest):
         raise HTTPException(
             status_code=500,
             detail={"message": f"Focus companies save failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/notifications/send")
+def notifications_send(request: NotificationSendRequest):
+    try:
+        return send_notification(request.model_dump())
+    except NotificationError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Notification send failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/admin/notifications")
+def admin_notifications():
+    try:
+        return get_admin_notifications()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Admin notifications failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/admin/notifications/detail")
+def admin_notifications_detail(notification_id: int = Query(...)):
+    try:
+        return get_admin_notification_detail(notification_id)
+    except NotificationError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Admin notification detail failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/admin/notifications/delete")
+def admin_notifications_delete(request: NotificationUserActionRequest):
+    try:
+        return delete_admin_notification(request.user_notification_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Delete notification failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/user/notifications")
+def user_notifications(username: str):
+    try:
+        return get_user_notifications(username)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"User notifications failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/user/notifications/badge")
+def user_notifications_badge(username: str):
+    try:
+        return get_user_notification_badge(username)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Notification badge failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/user/notifications/pending-popup")
+def user_notifications_pending_popup(username: str):
+    try:
+        return get_pending_popup(username)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Pending popup failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/user/notifications/dismiss-popup")
+def user_notifications_dismiss_popup(request: NotificationUserActionRequest):
+    try:
+        return dismiss_user_popup(request.user_notification_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Dismiss popup failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/user/notifications/read")
+def user_notifications_read(request: NotificationUserActionRequest):
+    try:
+        return read_user_notification(request.user_notification_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Read notification failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/user/notifications/unread")
+def user_notifications_unread(request: NotificationUserActionRequest):
+    try:
+        return unread_user_notification(request.user_notification_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Unread notification failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/user/notifications/delete")
+def user_notifications_delete(request: NotificationUserActionRequest):
+    try:
+        return delete_notification_for_user(request.user_notification_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Delete notification failed: {str(exc)}"},
         ) from exc

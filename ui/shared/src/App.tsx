@@ -29,6 +29,8 @@ import ContactFormsPage from './pages/admin/ContactFormsPage'
 import AdminParamsPage from './pages/admin/AdminParamsPage'
 import NotificationSenderPage from './pages/admin/NotificationSenderPage'
 import StatsPage from './pages/admin/StatsPage'
+import NotificationsPage from './pages/NotificationsPage'
+import NotificationPopupGate from './components/NotificationPopupGate'
 
 function App() {
   return (
@@ -65,8 +67,10 @@ function App() {
                   <Route path="/admin-panel/admin-params" element={<AdminParamsPage />} />
                   <Route path="/admin-panel/notification-sender" element={<NotificationSenderPage />} />
                   <Route path="/admin-panel/stats" element={<StatsPage />} />
-
+                  <Route path="/notifications" element={<NotificationsPage />} />
                 </Routes>
+                <AppLockOverlay />
+                <NotificationPopupGate />
               </BrowserRouter>
             </AppLockProvider>
           </SelectedUserProvider>
