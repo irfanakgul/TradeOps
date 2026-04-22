@@ -1,96 +1,141 @@
 from __future__ import annotations
 
 import os
-import sys
-import time
-import threading
+import signal
 import subprocess
+import sys
+import threading
+import time
 from collections import deque
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
-
-from service.ui_log_helper import ui_log
+from config.settings import load_settings
 
 
 class RuntimeManager:
     def __init__(self) -> None:
         self._lock = threading.RLock()
-        self._logs: deque[str] = deque(maxlen=2000)
+        self._logs: deque[str] = deque(maxlen=5000)
 
-        self._app_dir = Path(__file__).resolve().parents[2]
-        self._env_path = self._app_dir / ".env_local"
-        load_dotenv(self._env_path, override=True)
+        self._server_process: subprocess.Popen | None = None
+        self._server_reader_thread: threading.Thread | None = None
+        self._server_monitor_thread: threading.Thread | None = None
 
-        self._main_py_path = self._app_dir / "main.py"
-        self._tws_app_path = Path(os.getenv("TWS_APP_PATH", "").strip()).expanduser()
-
-        self._server_process: subprocess.Popen[str] | None = None
+        self._server_status = "stopped"
         self._server_requested = False
         self._server_restart_count = 0
         self._server_retry_limit = 5
-        self._watchdog_started = False
-        self._reader_thread: threading.Thread | None = None
 
-        self._append_log("RUNTIME", "Runtime manager initialized")
-        self._start_watchdog()
+        self._tws_process: subprocess.Popen | None = None
+        self._tws_status = "stopped"
 
-    def _reload_env(self) -> None:
-        load_dotenv(self._env_path, override=True)
-        self._tws_app_path = Path(os.getenv("TWS_APP_PATH", "").strip()).expanduser()
+        self._stop_monitor = False
 
-    def _append_log(self, category: str, message: str) -> None:
+        self._settings = load_settings()
+        self._base_dir = Path(__file__).resolve().parents[2]
+        self._main_py_path = self._base_dir / "main.py"
+        self._tws_app_path = Path(getattr(self._settings, "TWS_APP_PATH", "") or "")
+
+        self._start_monitor_thread()
+
+    # ---------------------------------------------------------
+    # Internal helpers
+    # ---------------------------------------------------------
+
+    def _reload_settings(self) -> None:
+        self._settings = load_settings()
+        self._tws_app_path = Path(getattr(self._settings, "TWS_APP_PATH", "") or "")
+
+    def _log(self, message: str) -> None:
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-        line = f"[{timestamp}][{category}] {message}"
-        self._logs.append(line)
-        ui_log(category, message)
-
-    def clear_logs(self) -> dict[str, Any]:
+        line = f"[{timestamp}] {message}"
         with self._lock:
-            self._logs.clear()
-            self._append_log("RUNTIME", "Log console cleared.")
-            return {"success": True}
+            self._logs.append(line)
+        print(line, flush=True)
 
-    def _is_tws_running(self) -> bool:
-        try:
-            result = subprocess.run(
-                ["pgrep", "-f", "Trader Workstation"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            return result.returncode == 0
-        except Exception:
-            return False
-
-    def _server_is_running(self) -> bool:
-        return self._server_process is not None and self._server_process.poll() is None
-
-    def _read_server_output(self, process: subprocess.Popen[str]) -> None:
-        try:
-            if process.stdout is None:
-                return
-
-            for line in process.stdout:
-                cleaned = line.rstrip()
-                if cleaned:
-                    self._logs.append(cleaned)
-        except Exception as exc:
-            self._append_log("SERVER", f"Log reader error: {exc}")
-
-    def _spawn_server_locked(self) -> None:
-        if self._server_is_running():
+    def _start_monitor_thread(self) -> None:
+        if self._server_monitor_thread and self._server_monitor_thread.is_alive():
             return
 
+        self._server_monitor_thread = threading.Thread(
+            target=self._monitor_server_loop,
+            daemon=True,
+        )
+        self._server_monitor_thread.start()
+
+    def _monitor_server_loop(self) -> None:
+        while not self._stop_monitor:
+            time.sleep(2)
+
+            with self._lock:
+                proc = self._server_process
+                server_requested = self._server_requested
+                restart_count = self._server_restart_count
+                retry_limit = self._server_retry_limit
+
+            if not proc:
+                continue
+
+            return_code = proc.poll()
+            if return_code is None:
+                continue
+
+            with self._lock:
+                self._server_process = None
+                self._server_reader_thread = None
+
+            if server_requested and restart_count < retry_limit:
+                with self._lock:
+                    self._server_restart_count += 1
+                    retry_index = self._server_restart_count
+                    self._server_status = "starting"
+
+                self._log(
+                    f"Server process stopped unexpectedly. Restart attempt {retry_index}/{retry_limit}."
+                )
+                try:
+                    self._launch_server_process()
+                except Exception as exc:
+                    self._log(f"Server restart failed: {exc}")
+            else:
+                with self._lock:
+                    self._server_status = "stopped"
+                    if self._server_restart_count >= self._server_retry_limit:
+                        self._server_requested = False
+
+                if server_requested and restart_count >= retry_limit:
+                    self._log(
+                        "Server retry limit reached. Automatic restart has been stopped."
+                    )
+                else:
+                    self._log("Server process stopped.")
+
+    def _read_server_output(self, process: subprocess.Popen) -> None:
+        if not process.stdout:
+            return
+
+        try:
+            for line in iter(process.stdout.readline, ""):
+                if not line:
+                    break
+                stripped = line.rstrip()
+                if stripped:
+                    self._log(stripped)
+        except Exception as exc:
+            self._log(f"Server log reader stopped: {exc}")
+
+    def _launch_server_process(self) -> None:
         if not self._main_py_path.exists():
             raise FileNotFoundError(f"main.py not found: {self._main_py_path}")
 
+        command = [sys.executable, str(self._main_py_path)]
+
         env = os.environ.copy()
 
-        self._server_process = subprocess.Popen(
-            [sys.executable, "-u", str(self._main_py_path)],
-            cwd=str(self._app_dir),
+        process = subprocess.Popen(
+            command,
+            cwd=str(self._base_dir),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL,
@@ -98,255 +143,255 @@ class RuntimeManager:
             bufsize=1,
             universal_newlines=True,
             env=env,
+            preexec_fn=os.setsid if sys.platform != "win32" else None,
         )
 
-        self._append_log(
-            "SERVER",
-            f"Server process start requested | PID={self._server_process.pid}",
-        )
+        with self._lock:
+            self._server_process = process
+            self._server_status = "running"
 
-        self._reader_thread = threading.Thread(
+        self._server_reader_thread = threading.Thread(
             target=self._read_server_output,
-            args=(self._server_process,),
+            args=(process,),
             daemon=True,
         )
-        self._reader_thread.start()
+        self._server_reader_thread.start()
 
-        time.sleep(1.2)
+        self._log(f"Server process started. PID={process.pid}")
 
-        if self._server_process.poll() is not None:
-            exit_code = self._server_process.returncode
-            self._server_process = None
-            raise RuntimeError(f"Server exited immediately | EXIT_CODE={exit_code}")
+    def _quit_macos_app_by_name(self, app_name: str) -> None:
+        applescript = f'tell application "{app_name}" to quit'
+        subprocess.run(
+            ["osascript", "-e", applescript],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-    def _start_watchdog(self) -> None:
-        if self._watchdog_started:
-            return
+    def _is_tws_alive(self) -> bool:
+        with self._lock:
+            proc = self._tws_process
 
-        self._watchdog_started = True
+        if proc and proc.poll() is None:
+            return True
 
-        def watchdog_loop() -> None:
-            while True:
-                time.sleep(2)
+        app_name = self._tws_app_path.stem if self._tws_app_path else "Trader Workstation"
+        result = subprocess.run(
+            ["pgrep", "-f", app_name],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.returncode == 0
 
-                with self._lock:
-                    if not self._server_requested:
-                        continue
-
-                    if self._server_restart_count >= self._server_retry_limit:
-                        self._append_log(
-                            "WATCHDOG",
-                            f"Retry limit reached ({self._server_retry_limit}). Automatic restart stopped.",
-                        )
-                        self._server_requested = False
-                        continue
-
-                    if self._server_process is None:
-                        try:
-                            self._append_log("WATCHDOG", "Server missing. Restarting.")
-                            self._spawn_server_locked()
-                            self._server_restart_count += 1
-                        except Exception as exc:
-                            self._server_restart_count += 1
-                            self._append_log("WATCHDOG", f"Restart failed: {exc}")
-                        continue
-
-                    exit_code = self._server_process.poll()
-                    if exit_code is not None:
-                        self._append_log(
-                            "WATCHDOG",
-                            f"Server stopped unexpectedly | EXIT_CODE={exit_code} | Restarting.",
-                        )
-                        self._server_process = None
-                        try:
-                            self._spawn_server_locked()
-                            self._server_restart_count += 1
-                        except Exception as exc:
-                            self._server_restart_count += 1
-                            self._append_log("WATCHDOG", f"Restart failed: {exc}")
-
-        thread = threading.Thread(target=watchdog_loop, daemon=True)
-        thread.start()
+    # ---------------------------------------------------------
+    # Public runtime controls
+    # ---------------------------------------------------------
 
     def start_tws(self) -> dict[str, Any]:
-        with self._lock:
-            self._reload_env()
+        self._reload_settings()
 
-            if self._is_tws_running():
-                self._append_log("TWS", "TWS is already running.")
-                return self.get_status()
+        if not self._tws_app_path.exists():
+            raise FileNotFoundError(f"TWS app not found: {self._tws_app_path}")
 
-            if not self._tws_app_path.exists():
-                raise FileNotFoundError(f"TWS app path not found: {self._tws_app_path}")
+        if self._is_tws_alive():
+            with self._lock:
+                self._tws_status = "running"
+            self._log("TWS is already running.")
+            return {"success": True, "message": "TWS already running."}
 
-            subprocess.run(
+        if sys.platform == "darwin":
+            process = subprocess.Popen(
                 ["open", str(self._tws_app_path)],
-                capture_output=True,
-                text=True,
-                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        else:
+            process = subprocess.Popen(
+                [str(self._tws_app_path)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
 
-            time.sleep(2)
+        with self._lock:
+            self._tws_process = process
+            self._tws_status = "running"
 
-            if not self._is_tws_running():
-                raise RuntimeError("TWS did not start. Verify TWS_APP_PATH and macOS permissions.")
-
-            self._append_log("TWS", "TWS started successfully.")
-            return self.get_status()
+        self._log(f"TWS launch command sent. PATH={self._tws_app_path}")
+        return {"success": True, "message": "TWS started."}
 
     def stop_tws(self) -> dict[str, Any]:
+        self._reload_settings()
+
+        app_name = self._tws_app_path.stem if self._tws_app_path else "Trader Workstation"
+
+        if sys.platform == "darwin":
+            self._quit_macos_app_by_name(app_name)
+
         with self._lock:
-            if not self._is_tws_running():
-                self._append_log("TWS", "TWS already stopped.")
-                return self.get_status()
+            proc = self._tws_process
 
-            subprocess.run(
-                ["osascript", "-e", 'tell application "Trader Workstation" to quit'],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+        if proc and proc.poll() is None:
+            try:
+                proc.terminate()
+                proc.wait(timeout=10)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
 
-            time.sleep(2)
+        with self._lock:
+            self._tws_process = None
+            self._tws_status = "stopped"
 
-            if self._is_tws_running():
-                subprocess.run(
-                    ["pkill", "-f", "Trader Workstation"],
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-                time.sleep(1)
-
-            if self._is_tws_running():
-                raise RuntimeError("TWS could not be stopped.")
-
-            self._append_log("TWS", "TWS stopped successfully.")
-            return self.get_status()
+        self._log("TWS stop command sent.")
+        return {"success": True, "message": "TWS stopped."}
 
     def restart_tws(self) -> dict[str, Any]:
-        with self._lock:
-            self.stop_tws()
-            time.sleep(1)
-            return self.start_tws()
+        self._log("Restarting TWS...")
+        self.stop_tws()
+        time.sleep(1)
+        return self.start_tws()
 
     def start_server(self) -> dict[str, Any]:
+        self._reload_settings()
+
         with self._lock:
-            if self._server_is_running():
-                self._append_log("SERVER", "Server is already running.")
-                return self.get_status()
+            if self._server_process and self._server_process.poll() is None:
+                self._server_status = "running"
+                self._log("Server is already running.")
+                return {"success": True, "message": "Server already running."}
 
             self._server_requested = True
             self._server_restart_count = 0
-            self._spawn_server_locked()
-            self._append_log("SERVER", "Server started successfully.")
-            return self.get_status()
+            self._server_status = "starting"
+
+        self._log("Starting server process...")
+        self._launch_server_process()
+
+        return {"success": True, "message": "Server started."}
 
     def stop_server(self) -> dict[str, Any]:
         with self._lock:
             self._server_requested = False
+            proc = self._server_process
 
-            if not self._server_is_running():
-                self._append_log("SERVER", "Server already stopped.")
-                self._server_process = None
-                return self.get_status()
-
-            assert self._server_process is not None
-            self._append_log("SERVER", "Stop requested.")
-            self._server_process.terminate()
+        if proc and proc.poll() is None:
+            try:
+                if sys.platform != "win32":
+                    os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                else:
+                    proc.terminate()
+            except Exception:
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
 
             try:
-                self._server_process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                self._append_log("SERVER", "Terminate timeout. Killing process.")
-                self._server_process.kill()
-                self._server_process.wait(timeout=5)
+                proc.wait(timeout=10)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
 
-            self._append_log("SERVER", "Server stopped successfully.")
+        with self._lock:
             self._server_process = None
-            return self.get_status()
+            self._server_reader_thread = None
+            self._server_status = "stopped"
+
+        self._log("Server stopped.")
+        return {"success": True, "message": "Server stopped."}
 
     def restart_server(self) -> dict[str, Any]:
-        with self._lock:
-            self.stop_server()
-            time.sleep(1)
-            return self.start_server()
+        self._log("Restarting server...")
+        self.stop_server()
+        time.sleep(1)
+        return self.start_server()
 
     def stop_all(self) -> dict[str, Any]:
-        with self._lock:
-            self._server_requested = False
-
+        self._log("Stopping all runtime processes...")
         try:
             self.stop_server()
         except Exception as exc:
-            self._append_log("RUNTIME", f"Stop server warning: {exc}")
+            self._log(f"Server stop failed during stop_all: {exc}")
 
         try:
             self.stop_tws()
         except Exception as exc:
-            self._append_log("RUNTIME", f"Stop TWS warning: {exc}")
+            self._log(f"TWS stop failed during stop_all: {exc}")
 
-        self._append_log("RUNTIME", "All runtime processes were stopped.")
-        return self.get_status()
+        return {"success": True, "message": "All processes stopped."}
+
+    def clear_logs(self) -> dict[str, Any]:
+        with self._lock:
+            self._logs.clear()
+        self._log("Runtime log console cleared.")
+        return {"success": True}
 
     def runtime_test(self) -> dict[str, Any]:
+        self._reload_settings()
+
+        result = {
+            "success": True,
+            "tws_path_exists": self._tws_app_path.exists(),
+            "main_path_exists": self._main_py_path.exists(),
+            "tws_path": str(self._tws_app_path),
+            "main_py_path": str(self._main_py_path),
+        }
+
+        self._log(
+            "Runtime test completed. "
+            f"TWS_PATH_EXISTS={result['tws_path_exists']} | "
+            f"MAIN_PATH_EXISTS={result['main_path_exists']}"
+        )
+        return result
+
+    # ---------------------------------------------------------
+    # Data for API
+    # ---------------------------------------------------------
+
+    def get_logs(self, limit: int = 500) -> list[str]:
         with self._lock:
-            self._reload_env()
-
-            tws_exists = self._tws_app_path.exists()
-            main_exists = self._main_py_path.exists()
-
-            self._append_log(
-                "TEST",
-                f"Runtime test completed | TWS path exists={tws_exists} | main.py exists={main_exists}",
-            )
-
-            return {
-                "success": True,
-                "tws_path_exists": tws_exists,
-                "main_path_exists": main_exists,
-                "tws_running": self._is_tws_running(),
-                "server_running": self._server_is_running(),
-                "ibkr_mode": os.getenv("IBKR_MODE", "UNKNOWN"),
-                "app_timezone": os.getenv("APP_TIMEZONE", "-"),
-                "ibkr_port": os.getenv("IBKR_PORT", "-"),
-            }
-
-    def verify_lock_password(self, password: str) -> bool:
-        self._reload_env()
-        expected = os.getenv("APP_LOCK_PASSWORD", "").strip()
-        return password.strip() == expected
-
-    def get_logs(self, limit: int = 400) -> list[str]:
-        with self._lock:
-            data = list(self._logs)
-            return data[-limit:]
+            if limit <= 0:
+                return list(self._logs)
+            return list(self._logs)[-limit:]
 
     def get_status(self) -> dict[str, Any]:
+        self._reload_settings()
+
         with self._lock:
-            self._reload_env()
-
-            server_running = self._server_is_running()
-            tws_running = self._is_tws_running()
-
-            server_status = (
-                "running"
-                if server_running
-                else ("starting" if self._server_requested else "stopped")
+            server_pid = (
+                self._server_process.pid
+                if self._server_process and self._server_process.poll() is None
+                else None
             )
+
+            if self._server_process and self._server_process.poll() is None:
+                server_status = self._server_status
+            else:
+                server_status = "stopped" if self._server_status != "starting" else "starting"
+
+            if self._is_tws_alive():
+                self._tws_status = "running"
+            else:
+                self._tws_status = "stopped"
 
             return {
                 "server_status": server_status,
-                "server_pid": self._server_process.pid if self._server_process and server_running else None,
+                "server_pid": server_pid,
                 "server_requested": self._server_requested,
                 "server_restart_count": self._server_restart_count,
                 "server_retry_limit": self._server_retry_limit,
-                "tws_status": "running" if tws_running else "stopped",
-                "ibkr_mode": os.getenv("IBKR_MODE", "UNKNOWN"),
-                "app_timezone": os.getenv("APP_TIMEZONE", "-"),
-                "ibkr_port": os.getenv("IBKR_PORT", "-"),
+                "tws_status": self._tws_status,
+                "ibkr_mode": getattr(self._settings, "IBKR_MODE", "PAPER"),
+                "app_timezone": getattr(self._settings, "APP_TIMEZONE", ""),
+                "ibkr_port": str(getattr(self._settings, "IBKR_PORT", "")),
                 "tws_path_exists": self._tws_app_path.exists(),
                 "main_path_exists": self._main_py_path.exists(),
+                "app_version": getattr(self._settings, "APP_VERSION", ""),
             }
 
 

@@ -166,11 +166,11 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
     return result
   }
 
-  async function verifyLockPassword(password: string) {
+  async function verifyLockPassword(username: string, password: string) {
     const result = await requestJson('http://127.0.0.1:8000/api/runtime/unlock', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ username, password }),
     })
     return Boolean(result.success)
   }
