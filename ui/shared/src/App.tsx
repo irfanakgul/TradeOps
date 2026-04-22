@@ -1,10 +1,17 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+
 import { LanguageProvider } from './components/LanguageContext'
 import { AuthProvider } from './components/AuthContext'
 import { RuntimeProvider } from './components/RuntimeContext'
 import { SelectedUserProvider } from './components/SelectedUserContext'
 import { AppLockProvider } from './components/AppLockContext'
+
 import AppLockOverlay from './components/AppLockOverlay'
+import NotificationPopupGate from './components/NotificationPopupGate'
+import AppSplash from './components/AppSplash'
+
+// Pages
 import HomePage from './pages/HomePage'
 import RegisterPage from './pages/RegisterPage'
 import LoginPage from './pages/LoginPage'
@@ -12,17 +19,14 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import BrokerPage from './pages/BrokerPage'
 import UserPanelPage from './pages/UserPanelPage'
-
 import WalletOverviewPage from './pages/WalletOverviewPage'
 import OrdersPage from './pages/OrdersPage'
 import TradeConfigurationsPage from './pages/TradeConfigurationsPage'
 import ContactPage from './pages/ContactPage'
-
 import SubscriptionsPage from './pages/SubscriptionsPage'
 import SimulationsPage from './pages/SimulationsPage'
 import AboutPage from './pages/AboutPage'
 import FocusCompaniesPage from './pages/FocusCompaniesPage'
-
 import AdminPanelPage from './pages/AdminPanelPage'
 import UsersDetailsPage from './pages/admin/UsersDetailsPage'
 import ContactFormsPage from './pages/admin/ContactFormsPage'
@@ -30,9 +34,48 @@ import AdminParamsPage from './pages/admin/AdminParamsPage'
 import NotificationSenderPage from './pages/admin/NotificationSenderPage'
 import StatsPage from './pages/admin/StatsPage'
 import NotificationsPage from './pages/NotificationsPage'
-import NotificationPopupGate from './components/NotificationPopupGate'
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+
+    // minimum splash süresi
+    const minDelay = new Promise((resolve) => setTimeout(resolve, 4500))
+
+    // backend hazır mı kontrol
+    const backendReady = (async () => {
+      const start = Date.now()
+
+      while (Date.now() - start < 10000) {
+        try {
+          const res = await fetch('http://127.0.0.1:8000/api/runtime/status')
+          if (res.ok) return
+        } catch {
+          // beklemeye devam
+        }
+
+        await new Promise((r) => setTimeout(r, 400))
+      }
+    })()
+
+    Promise.allSettled([minDelay, backendReady]).then(() => {
+      if (isMounted) {
+        setShowSplash(false)
+      }
+    })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // 🔥 Splash burada devreye giriyor
+  if (showSplash) {
+    return <AppSplash />
+  }
+
   return (
     <LanguageProvider>
       <AuthProvider>
@@ -51,7 +94,6 @@ function App() {
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/broker" element={<BrokerPage />} />
                   <Route path="/user-panel" element={<UserPanelPage />} />
-                  <Route path="/admin-panel" element={<AdminPanelPage />} />
                   <Route path="/wallet-overview" element={<WalletOverviewPage />} />
                   <Route path="/orders" element={<OrdersPage />} />
                   <Route path="/trade-configurations" element={<TradeConfigurationsPage />} />
@@ -59,17 +101,17 @@ function App() {
                   <Route path="/simulations" element={<SimulationsPage />} />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/focus-companies" element={<FocusCompaniesPage />} />
-                  <Route path="/admin-panel" element={<AdminPanelPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
 
+                  {/* Admin */}
                   <Route path="/admin-panel" element={<AdminPanelPage />} />
                   <Route path="/admin-panel/users-details" element={<UsersDetailsPage />} />
                   <Route path="/admin-panel/contact-forms" element={<ContactFormsPage />} />
                   <Route path="/admin-panel/admin-params" element={<AdminParamsPage />} />
                   <Route path="/admin-panel/notification-sender" element={<NotificationSenderPage />} />
                   <Route path="/admin-panel/stats" element={<StatsPage />} />
-                  <Route path="/notifications" element={<NotificationsPage />} />
                 </Routes>
-                <AppLockOverlay />
+
                 <NotificationPopupGate />
               </BrowserRouter>
             </AppLockProvider>

@@ -1,0 +1,95 @@
+.app-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at top, rgba(245, 158, 11, 0.14), transparent 30%),
+      linear-gradient(180deg, #08111f 0%, #0d1726 100%);
+  }
+  
+  .app-splash-card {
+    width: min(680px, 90vw);
+    padding: 42px 36px;
+    border-radius: 28px;
+    text-align: center;
+    background: rgba(10, 18, 32, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(12px);
+    animation: splashFadeIn 0.5s ease;
+  }
+  
+  .app-splash-logo {
+    width: 180px;
+    max-width: 42vw;
+    height: auto;
+    margin-bottom: 18px;
+    animation: splashLogoFloat 2.4s ease-in-out infinite;
+  }
+  
+  .app-splash-title {
+    margin: 0;
+    color: #ffffff;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+  
+  .app-splash-subtitle {
+    margin: 12px 0 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 1rem;
+  }
+  
+  .app-splash-loader-wrap {
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  
+  .app-splash-hourglass {
+    width: 38px;
+    height: 38px;
+    border: 3px solid rgba(255, 255, 255, 0.24);
+    border-top-color: #f59e0b;
+    border-bottom-color: #fbbf24;
+    border-radius: 50%;
+    animation: splashSpin 1s linear infinite;
+  }
+  
+  .app-splash-loader-text {
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.95rem;
+    letter-spacing: 0.01em;
+  }
+  
+  @keyframes splashSpin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  @keyframes splashFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  @keyframes splashLogoFloat {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
