@@ -3,12 +3,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
+import sys
 
 import yaml
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-EXCHANGES_YAML_PATH = BASE_DIR / "config" / "exchanges.yaml"
+def _resolve_base_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        if hasattr(sys, "_MEIPASS"):
+            return Path(sys._MEIPASS)
+        return Path(sys.executable).resolve().parent
+
+    return Path(__file__).resolve().parents[1]
+
+
+EXCHANGES_YAML_PATH = _resolve_base_dir() / "config" / "exchanges.yaml"
 
 
 @dataclass

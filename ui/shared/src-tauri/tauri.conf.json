@@ -43,7 +43,8 @@
     "icons/icon.ico"
   ],
   "externalBin": [
-    "binaries/tradeops_backend"
-  ]
+    "binaries/tradeops_backend",
+    "binaries/tradeops_server"
+]
 }
 }

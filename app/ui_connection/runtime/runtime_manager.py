@@ -35,13 +35,21 @@ class RuntimeManager:
         self._settings = load_settings()
         self._base_dir = Path(__file__).resolve().parents[2]
         self._main_py_path = self._base_dir / "main.py"
+
+        if self._is_frozen():
+            executable_dir = Path(sys.executable).resolve().parent
+            self._server_executable_path = executable_dir / "tradeops_server"
+        else:
+            self._server_executable_path = self._base_dir / "dist" / "tradeops_server"
+
         self._tws_app_path = Path(getattr(self._settings, "TWS_APP_PATH", "") or "")
 
         self._start_monitor_thread()
-
     # ---------------------------------------------------------
     # Internal helpers
     # ---------------------------------------------------------
+    def _is_frozen(self) -> bool:
+        return getattr(sys, "frozen", False)
 
     def _reload_settings(self) -> None:
         self._settings = load_settings()
@@ -126,16 +134,31 @@ class RuntimeManager:
             self._log(f"Server log reader stopped: {exc}")
 
     def _launch_server_process(self) -> None:
-        if not self._main_py_path.exists():
-            raise FileNotFoundError(f"main.py not found: {self._main_py_path}")
+        if self._is_frozen():
+            target_path = self._server_executable_path
 
-        command = [sys.executable, str(self._main_py_path)]
+            if not target_path.exists():
+                raise FileNotFoundError(
+                    f"server executable not found: {target_path}"
+                )
+
+            command = [str(target_path)]
+            cwd = str(target_path.parent)
+        else:
+            target_path = self._main_py_path
+
+            if not target_path.exists():
+                raise FileNotFoundError(f"main.py not found: {target_path}")
+
+            command = [sys.executable, "-u", str(target_path)]
+            cwd = str(self._base_dir)
 
         env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
 
         process = subprocess.Popen(
             command,
-            cwd=str(self._base_dir),
+            cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL,
