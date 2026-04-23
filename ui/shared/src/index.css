@@ -229,14 +229,6 @@ a {
   padding-left: 18px;
 }
 
-.register-layout {
-  display: flex;
-  justify-content: center;
-}
-
-.register-card {
-  width: min(1100px, 100%);
-}
 
 .register-form {
   margin-top: 24px;
@@ -2795,4 +2787,51 @@ body {
 .notification-row-unread td {
   font-weight: 800;
   color: #4ade80;
+}
+.register-layout {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: visible;
+  padding-bottom: 16px;
+}
+
+.register-card {
+  width: min(1100px, 100%);
+  max-width: 1100px;
+  margin-bottom: 24px;
+  flex: 0 0 auto;
+}
+
+.register-form {
+  margin-top: 24px;
+  width: 100%;
+}
+
+.register-page-title {
+  color: #f8fbff;
+}
+
+.register-subtitle {
+  color: #c7d8ea;
+}
+
+.app-shell.register-page-shell {
+  height: auto;
+  min-height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@media (max-width: 900px) {
+  .register-layout {
+    overflow: visible;
+  }
+
+  .register-card {
+    margin-bottom: 12px;
+  }
 }

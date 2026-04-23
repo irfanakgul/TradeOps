@@ -239,7 +239,13 @@ This agreement is an inseparable part of the user registration process.
   }
 
   return (
-    <div className="app-shell">
+    <div
+        className="app-shell register-page-shell"
+        style={{
+          height: '100vh',
+          overflow: 'hidden',
+        }}
+      >
       <header className="topbar">
         <div className="brand-section">
           <img src={logo} alt="TradeOPS Logo" className="logo" />
@@ -272,16 +278,49 @@ This agreement is an inseparable part of the user registration process.
         </div>
       </header>
 
-      <main className="register-layout">
+      <main
+        className="register-layout"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          alignItems: 'flex-start',
+          paddingBottom: '24px',
+        }}
+      >
         <section className="register-card">
           <div className="hero-pill">{t.register}</div>
-          <h2>{t.registerTitle}</h2>
-          <p className="register-subtitle">{t.registerSubtitle}</p>
+
+          <h2
+            className="register-page-title"
+            style={{
+              margin: '0 0 10px',
+              fontSize: 'clamp(2rem, 4vw, 3.1rem)',
+              lineHeight: 1.08,
+              color: '#f8fbff',
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+            }}
+          >
+            {t.registerTitle}
+          </h2>
+
+          <p
+            className="register-subtitle"
+            style={{
+              margin: 0,
+              color: '#c7d8ea',
+              fontSize: '1.05rem',
+            }}
+          >
+            {t.registerSubtitle}
+          </p>
 
           <form className="register-form" onSubmit={handleSubmit}>
             <div className="form-grid">
               <div className="form-field">
-                <label>{t.username}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.username}</label>
                 <input
                   name="username"
                   value={form.username}
@@ -293,7 +332,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.email}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.email}</label>
                 <input
                   name="email"
                   type="email"
@@ -306,7 +345,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.emailRepeat}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.emailRepeat}</label>
                 <input
                   name="emailRepeat"
                   type="email"
@@ -319,7 +358,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.firstName}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.firstName}</label>
                 <input
                   name="firstName"
                   value={form.firstName}
@@ -331,7 +370,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.lastName}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.lastName}</label>
                 <input
                   name="lastName"
                   value={form.lastName}
@@ -343,7 +382,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.dateOfBirth}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.dateOfBirth}</label>
                 <input
                   name="dateOfBirth"
                   type="date"
@@ -356,7 +395,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.country}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.country}</label>
                 <input
                   name="country"
                   value={form.country}
@@ -368,7 +407,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.mobilePhone}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.mobilePhone}</label>
                 <input
                   name="mobilePhone"
                   value={form.mobilePhone}
@@ -380,7 +419,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.gender}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.gender}</label>
                 <select
                   name="gender"
                   value={form.gender}
@@ -398,7 +437,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.experience}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.experience}</label>
                 <select
                   name="experience"
                   value={form.experience}
@@ -416,7 +455,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.estimatedBudget}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.estimatedBudget}</label>
                 <input
                   name="estimatedBudget"
                   type="number"
@@ -431,7 +470,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.password}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.password}</label>
                 <input
                   name="password"
                   type="password"
@@ -444,7 +483,7 @@ This agreement is an inseparable part of the user registration process.
               </div>
 
               <div className="form-field">
-                <label>{t.passwordRepeat}</label>
+                <label style={{ color: '#e6eef8', fontWeight: 700 }}>{t.passwordRepeat}</label>
                 <input
                   name="passwordRepeat"
                   type="password"
@@ -470,7 +509,10 @@ This agreement is an inseparable part of the user registration process.
                   {t.readAgreement}
                 </button>
 
-                <label className="checkbox-row">
+                <label
+                  className="checkbox-row"
+                  style={{ color: '#e6eef8', fontWeight: 600 }}
+                >
                   <input
                     type="checkbox"
                     name="responsibilityApproved"
@@ -509,7 +551,9 @@ This agreement is an inseparable part of the user registration process.
           </form>
 
           <div className="bottom-nav-row">
-            <button className="secondary-btn">{t.goLogin}</button>
+            <Link to="/login" className="secondary-btn link-btn">
+              {t.goLogin}
+            </Link>
             <Link to="/" className="secondary-btn link-btn">
               {t.goHome}
             </Link>
@@ -522,12 +566,22 @@ This agreement is an inseparable part of the user registration process.
       {showAgreement && (
         <div className="modal-overlay">
           <div className="modal-card">
-            <h3>{t.agreementTitle}</h3>
+            <h3
+              style={{
+                marginTop: 0,
+                color: '#f8fbff',
+                fontSize: '1.35rem',
+                fontWeight: 800,
+              }}
+            >
+              {t.agreementTitle}
+            </h3>
 
             <div
               ref={agreementRef}
               className="agreement-scroll"
               onScroll={handleAgreementScroll}
+              style={{ color: '#d7e5f3' }}
             >
               {agreementText}
             </div>

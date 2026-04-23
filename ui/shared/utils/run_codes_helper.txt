@@ -1,0 +1,17 @@
+1. Web olarak görmek için
+cd /Users/yasinyilmaz/Desktop/TradeOps/app
+source /Users/yasinyilmaz/Desktop/TradeOps/.venv/bin/activate
+uvicorn ui_connection.ui_api.main_api:app --host 127.0.0.1 --port 8000 --reload
+
+Yeni terminal:
+cd /Users/yasinyilmaz/Desktop/TradeOps/ui/shared
+npm run dev
+
+
+2.acilir pencere gibi gormek icin (uygulama haline yakin version): 
+
+cd /Users/yasinyilmaz/Desktop/TradeOps/ui/shared
+npx tauri dev
+
+browser:
+http://localhost:5173
