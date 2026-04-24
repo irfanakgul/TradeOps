@@ -97,6 +97,11 @@ class AppSettings:
     RUN_ON_SCHEDULE: bool
     MANUAL_TRIGGER_PIPELINES: List[str]
 
+    SIM_IBKR_MODE: str = "PAPER"
+    SIM_IBKR_HOST: str = "127.0.0.1"
+    SIM_IBKR_PORT: int = 7497
+    SIM_IBKR_CLIENT_ID: int = 1
+
 
 def load_settings() -> AppSettings:
     _load_env_files()
@@ -153,6 +158,11 @@ def load_settings() -> AppSettings:
 
         RUN_ON_SCHEDULE=_get_bool("RUN_ON_SCHEDULE", default=False),
         MANUAL_TRIGGER_PIPELINES=_get_list("MANUAL_TRIGGER_PIPELINES", default=[]),
+
+        SIM_IBKR_MODE=_get_env("SIM_IBKR_MODE", default="PAPER", required=True),
+        SIM_IBKR_HOST=_get_env("SIM_IBKR_HOST", default="127.0.0.1", required=True),
+        SIM_IBKR_PORT=_get_int("SIM_IBKR_PORT", default=7497, required=True),
+        SIM_IBKR_CLIENT_ID=_get_int("SIM_IBKR_CLIENT_ID", default=1, required=True),
     )
 
     _validate_settings(settings)

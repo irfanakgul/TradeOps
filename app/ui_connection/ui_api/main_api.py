@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
+from ui_connection.ui_api.test_manual_api import router as test_manual_router
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -182,6 +183,7 @@ class ContactFormRequest(BaseModel):
 
 
 app = FastAPI(title="TradeOPS UI API")
+app.include_router(test_manual_router)
 
 app.add_middleware(
     CORSMiddleware,

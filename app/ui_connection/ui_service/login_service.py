@@ -187,24 +187,41 @@ def login_user(payload: dict) -> dict:
         )
         raise LoginError(msg(lang, "inactive_deactive"), status_code=403)
 
-    if registered_device_id != current_device_id:
-        deactivate_user(user_id, "DEVICE_ID_MISMATCHED")
+    # device id check is active mode
+    # if registered_device_id != current_device_id:
+    #     deactivate_user(user_id, "DEVICE_ID_MISMATCHED")
 
+    #     insert_login_log(
+    #         username=username,
+    #         email=email,
+    #         device_id=current_device_id,
+    #         event_type="LOGIN_DEVICE_MISMATCH",
+    #         success=False,
+    #         failure_reason="DEVICE_ID_MISMATCHED",
+    #         responsibility_approved=responsibility_approved,
+    #     )
+
+    #     raise LoginError(
+    #         msg(lang, "device_mismatch"),
+    #         status_code=403,
+    #         redirect_to="/contact",
+    #     )
+    
+    # device id check passive mode
+    if registered_device_id != current_device_id:
+        # 🔒 TEMPORARY: device check disabled (only logging)
         insert_login_log(
             username=username,
             email=email,
             device_id=current_device_id,
             event_type="LOGIN_DEVICE_MISMATCH",
-            success=False,
+            success=True,
             failure_reason="DEVICE_ID_MISMATCHED",
             responsibility_approved=responsibility_approved,
         )
 
-        raise LoginError(
-            msg(lang, "device_mismatch"),
-            status_code=403,
-            redirect_to="/contact",
-        )
+        # login devam eder
+
 
     if not verify_password(user["PASSWORD_HASH"], password):
         failed_count = increment_failed_login_count(user_id)

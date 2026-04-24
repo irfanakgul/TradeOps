@@ -98,8 +98,7 @@ The developers of TradeOPS cannot be held responsible for losses resulting from 
           language === 'tr' ? 'Giriş başarısız.' : 'Login failed.'
         )
         const warning = result?.detail?.warning
-        const redirectTo = result?.detail?.redirect_to
-
+      
         if (field) {
           setErrors((prev) => ({
             ...prev,
@@ -108,11 +107,7 @@ The developers of TradeOPS cannot be held responsible for losses resulting from 
         } else {
           setSubmitMessage(warning ? `${message} ${warning}` : message)
         }
-
-        if (redirectTo === '/contact') {
-          navigate('/contact')
-        }
-
+      
         return
       }
 
