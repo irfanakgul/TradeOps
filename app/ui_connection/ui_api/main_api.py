@@ -87,6 +87,14 @@ from ui_connection.ui_service.sim_buy_ui_service import (
     run_sim_buy,
 )
 
+from ui_connection.ui_service.trade_log_ui_service import (
+    TradeLogError,
+    execute_sell,
+    fetch_trade_log_positions,
+    get_actual_price,
+    get_sim_trade_mode,
+)
+
 class SimulatorParamsSaveRequest(BaseModel):
     params: dict
 
@@ -223,6 +231,17 @@ class SimulatorWalletRequest(BaseModel):
     requesting_user_type: str
     selected_username: str | None = None
     language: str | None = "en"
+
+
+class TradeLogSellRequest(BaseModel):
+    symbol: str
+    exchange: str
+    currency: str
+    username: str
+    ibkr_mode: str
+    buy_exec_id: str | None = None
+    buy_price: float | None = None
+
 
 app = FastAPI(title="TradeOPS UI API")
 # app.include_router(test_manual_router)
@@ -934,4 +953,86 @@ def simulator_execute_buy(request: SimExecuteBuyRequest):
         raise HTTPException(
             status_code=500,
             detail={"message": f"Execute buy failed: {str(exc)}"},
+        ) from exc
+
+
+# ── Trade Log endpoints ──────────────────────────────────────────────────────
+
+@app.get("/api/simulator/trade-logs/sim-mode")
+def trade_log_sim_mode():
+    try:
+        return {"sim_mode": get_sim_trade_mode()}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(exc)},
+        ) from exc
+
+
+@app.get("/api/simulator/trade-logs/open-positions")
+def trade_log_open_positions(username: str, ibkr_mode: str):
+    try:
+        rows = fetch_trade_log_positions(username, ibkr_mode)
+        return {"rows": rows}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(exc)},
+        ) from exc
+
+
+@app.post("/api/simulator/trade-logs/update-positions")
+def trade_log_update_positions(request: SimulatorWalletRequest):
+    try:
+        from ui_connection.ui_service.simulator_service import run_sim_wallet_update_pipeline
+        run_sim_wallet_update_pipeline(language=request.language or "en")
+        effective_username = request.selected_username or request.requesting_username
+        paper_rows = fetch_trade_log_positions(effective_username, "PAPER")
+        live_rows = fetch_trade_log_positions(effective_username, "LIVE")
+        return {"paper_rows": paper_rows, "live_rows": live_rows}
+    except SimulatorError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(exc)},
+        ) from exc
+
+
+@app.get("/api/simulator/trade-logs/actual-price")
+def trade_log_actual_price(symbol: str, exchange: str):
+    try:
+        return get_actual_price(symbol, exchange)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(exc)},
+        ) from exc
+
+
+@app.post("/api/simulator/trade-logs/sell")
+def trade_log_sell(request: TradeLogSellRequest):
+    try:
+        result = execute_sell(
+            symbol=request.symbol,
+            exchange=request.exchange,
+            currency=request.currency,
+            username=request.username,
+            ibkr_mode=request.ibkr_mode,
+            buy_exec_id=request.buy_exec_id,
+            buy_price_from_db=request.buy_price,
+        )
+        return result
+    except TradeLogError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(exc)},
         ) from exc

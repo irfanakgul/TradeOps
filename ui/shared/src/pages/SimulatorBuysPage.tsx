@@ -55,6 +55,13 @@ type RowState = {
 
 type WalletFunds = { PAPER: number | null; LIVE: number | null }
 
+type ActualPriceState = {
+  loading: boolean
+  price: number | null
+  price_date: string | null
+  error: string | null
+}
+
 const EXIT_TYPES: ExitType[] = [
   'market',
   'limit',
@@ -126,6 +133,8 @@ export default function SimulatorBuysPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [controlsBusy, setControlsBusy] = useState(false)
+  const [actualPrices, setActualPrices] = useState<Record<string, ActualPriceState>>({})
+  const [pricesLoading, setPricesLoading] = useState(false)
 
   function getRowState(row: SignalRow): RowState {
     return rowStates[rowKey(row)] ?? defaultRowState()
@@ -215,6 +224,48 @@ export default function SimulatorBuysPage() {
       else next.add(exch)
       return next
     })
+  }
+
+  async function fetchActualPrices() {
+    if (pricesLoading || filteredSignals.length === 0) return
+    setPricesLoading(true)
+    const rows = filteredSignals
+    for (const row of rows) {
+      const key = rowKey(row)
+      setActualPrices((prev) => ({
+        ...prev,
+        [key]: { loading: true, price: null, price_date: null, error: null },
+      }))
+      try {
+        const params = new URLSearchParams({ symbol: row.symbol, exchange: row.exchange })
+        const res = await fetch(
+          `http://127.0.0.1:8000/api/simulator/trade-logs/actual-price?${params}`,
+        )
+        const data = await res.json()
+        if (data.ok) {
+          setActualPrices((prev) => ({
+            ...prev,
+            [key]: { loading: false, price: data.price, price_date: data.price_date, error: null },
+          }))
+        } else {
+          setActualPrices((prev) => ({
+            ...prev,
+            [key]: {
+              loading: false,
+              price: null,
+              price_date: null,
+              error: data.reason || 'Fiyat alınamadı',
+            },
+          }))
+        }
+      } catch {
+        setActualPrices((prev) => ({
+          ...prev,
+          [key]: { loading: false, price: null, price_date: null, error: 'Bağlantı hatası' },
+        }))
+      }
+    }
+    setPricesLoading(false)
   }
 
   async function handleBuy(row: SignalRow) {
@@ -516,6 +567,33 @@ export default function SimulatorBuysPage() {
               </div>
             )}
 
+            {/* ── Actual Price Update Button + balance info ── */}
+            {filteredSignals.length > 0 && (
+              <div className="tl-topbar" style={{ marginTop: 8 }}>
+                <div className="sim-mode-badge-row">
+                  <span className={`sim-mode-badge ${simMode === 'LIVE' ? 'live' : 'paper'}`}>
+                    MODE: {simMode}
+                  </span>
+                  {walletFunds[simMode as 'PAPER' | 'LIVE'] != null && (
+                    <span className={`sim-mode-badge ${simMode === 'LIVE' ? 'live' : 'paper'}`}>
+                      {language === 'tr' ? 'Bakiye:' : 'Balance:'}{' '}
+                      {formatMoney(walletFunds[simMode as 'PAPER' | 'LIVE'])}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="buy-action-btn tl-update-btn"
+                  disabled={pricesLoading}
+                  onClick={fetchActualPrices}
+                >
+                  {pricesLoading
+                    ? (language === 'tr' ? 'Fiyatlar çekiliyor...' : 'Fetching prices...')
+                    : (language === 'tr' ? '↻ Güncel Fiyatları Güncelle' : '↻ Update Actual Prices')}
+                </button>
+              </div>
+            )}
+
             {loading && (
               <div className="broker-action-banner">
                 {language === 'tr' ? 'Sinyaller yükleniyor...' : 'Loading signals...'}
@@ -543,9 +621,12 @@ export default function SimulatorBuysPage() {
                       <th>SCORE</th>
                       <th>TARGET</th>
                       <th>SIGNAL</th>
+                      <th>MAX QTY</th>
                       <th>QTY</th>
                       <th>EXIT TYPE</th>
                       <th>PARAMS</th>
+                      <th>ACTUAL PRICE</th>
+                      <th>PRICE DATE</th>
                       <th>BUY</th>
                       <th className="buy-result-col">RESULT</th>
                     </tr>
@@ -553,7 +634,7 @@ export default function SimulatorBuysPage() {
                   <tbody>
                     {filteredSignals.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="orders-empty-cell">
+                        <td colSpan={14} className="orders-empty-cell">
                           {loading
                             ? '...'
                             : language === 'tr'
@@ -596,6 +677,48 @@ export default function SimulatorBuysPage() {
                               )}
                             </td>
 
+                            {/* MAX QTY */}
+                            {(() => {
+                              const ap = actualPrices[key]
+                              const balance = walletFunds[simMode as 'PAPER' | 'LIVE']
+                              const priceToUse = ap?.price ?? row.target_price
+                              const maxQty =
+                                balance != null && priceToUse != null && priceToUse > 0
+                                  ? Math.floor(balance / priceToUse)
+                                  : null
+                              return (
+                                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                  {ap?.loading ? (
+                                    <span style={{ color: '#888', fontSize: 12 }}>...</span>
+                                  ) : maxQty != null ? (
+                                    <span
+                                      style={{
+                                        fontWeight: 700,
+                                        color: maxQty > 0 ? '#0891b2' : '#e53935',
+                                        fontSize: 13,
+                                      }}
+                                    >
+                                      {maxQty.toLocaleString()}
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>
+                                  )}
+                                  {state.result?.ok && (() => {
+                                    const updatedBalance = walletFunds[simMode as 'PAPER' | 'LIVE']
+                                    const newMax =
+                                      updatedBalance != null && priceToUse != null && priceToUse > 0
+                                        ? Math.floor(updatedBalance / priceToUse)
+                                        : null
+                                    return newMax != null ? (
+                                      <div style={{ color: '#64748b', fontSize: 10, marginTop: 2 }}>
+                                        {language === 'tr' ? 'Güncel:' : 'Now:'} {newMax.toLocaleString()}
+                                      </div>
+                                    ) : null
+                                  })()}
+                                </td>
+                              )
+                            })()}
+
                             {/* QTY */}
                             <td>
                               <input
@@ -632,6 +755,47 @@ export default function SimulatorBuysPage() {
 
                             {/* PARAMS */}
                             <td className="buy-params-cell">{renderParamsCell(row)}</td>
+
+                            {/* ACTUAL PRICE */}
+                            {(() => {
+                              const ap = actualPrices[key]
+                              return (
+                                <>
+                                  <td style={{ whiteSpace: 'nowrap' }}>
+                                    {ap?.loading ? (
+                                      <span style={{ color: '#888', fontSize: 12 }}>...</span>
+                                    ) : ap?.price != null ? (
+                                      <span style={{ fontWeight: 600 }}>
+                                        {new Intl.NumberFormat('en-US', {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 4,
+                                        }).format(ap.price)}
+                                      </span>
+                                    ) : ap?.error ? (
+                                      <span
+                                        style={{ color: '#e53935', fontSize: 11 }}
+                                        title={ap.error}
+                                      >
+                                        —
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>
+                                    )}
+                                  </td>
+                                  <td className="buy-date" style={{ whiteSpace: 'nowrap' }}>
+                                    {ap?.price_date
+                                      ? new Date(ap.price_date).toLocaleString('tr-TR', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })
+                                      : <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>}
+                                  </td>
+                                </>
+                              )
+                            })()}
 
                             {/* BUY BUTTON */}
                             <td>

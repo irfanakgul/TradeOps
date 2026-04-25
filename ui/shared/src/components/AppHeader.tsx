@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import logo from '../../../assets/logo/tradeops-logo.png'
+import logo from '../assets/tradeops-logo.svg'
 import { useLanguage, type Language } from './LanguageContext'
 import { useAuth } from './AuthContext'
 import { useRuntime } from './RuntimeContext'
@@ -60,21 +60,11 @@ export default function AppHeader() {
         <div className="brand-section">
           <img src={logo} alt="TradeOPS Logo" className="logo" />
           <div>
-            <h1 className="brand">{t.brand}</h1>
-            <p className="status-line">
-              {t.status}:{' '}
-              <span className="status-ready">
-                {isLoggedIn
-                  ? status.server_status === 'running'
-                    ? language === 'tr'
-                      ? 'Bağlantı Aktif'
-                      : 'Connected'
-                    : language === 'tr'
-                      ? 'Hazır'
-                      : 'Ready'
-                  : t.statusReady}
-              </span>
-            </p>
+            <h1 className="brand">
+              <span className="brand-trade">Trade</span>
+              <span className="brand-ops">OPS</span>
+            </h1>
+            <p className="brand-slogan">Precision · Automation · Execution</p>
           </div>
         </div>
 

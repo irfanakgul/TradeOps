@@ -75,15 +75,38 @@ a {
 }
 
 .logo {
-  width: 92px;
-  height: 92px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .brand {
   margin: 0;
   font-size: 1.35rem;
   letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.brand-trade {
+  font-weight: 300;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+}
+
+.brand-ops {
+  font-weight: 900;
+  color: #64b5f6;
+  letter-spacing: 0.02em;
+}
+
+.brand-slogan {
+  margin: 5px 0 0;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(100, 181, 246, 0.50);
 }
 
 .status-line {
@@ -3260,4 +3283,21 @@ tr.buy-row-success > td {
 
 tr.buy-row-error > td {
   background: rgba(248, 113, 113, 0.04);
+}
+
+/* ── Trade Log page ───────────────────��─────────── */
+.tl-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.tl-update-btn {
+  height: 34px;
+  min-width: 180px;
+  font-size: 0.82rem;
+  background: linear-gradient(135deg, #0f766e, #0891b2);
 }

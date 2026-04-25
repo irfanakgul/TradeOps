@@ -15,7 +15,7 @@ export default function SimulatorTabs() {
     },
     {
       to: '/simulator/trade-logs',
-      label: language === 'tr' ? 'Trade Log' : 'Trade Log',
+      label: language === 'tr' ? 'Open Positions' : 'Open Positions',
     },
     {
       to: '/simulator/parameters',
