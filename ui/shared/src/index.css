@@ -2997,3 +2997,267 @@ body {
   background: rgba(59, 130, 246, 0.14);
   border: 1px solid rgba(59, 130, 246, 0.24);
 }
+
+/* ─── Simulator Buy Page ─────────────────────────────────────── */
+
+.sim-buy-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.sim-mode-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.sim-user-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sim-user-selector-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
+}
+
+.sim-user-selector-select {
+  min-width: 130px;
+  font-size: 0.8rem;
+  padding: 3px 6px;
+}
+
+.sim-user-selector-static {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main, #e0e0e0);
+  padding: 3px 6px;
+  background: var(--card-bg, #1e1e2e);
+  border: 1px solid var(--border, #333);
+  border-radius: 5px;
+}
+
+.buy-filter-row {
+  margin: 14px 0 8px;
+}
+
+.buy-exchange-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 16px;
+}
+
+.buy-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.22);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.buy-signals-table-wrap {
+  overflow-x: auto;
+}
+
+.buy-signals-table {
+  min-width: 1000px;
+}
+
+.buy-signals-table thead th {
+  white-space: nowrap;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  padding: 10px 10px;
+}
+
+.buy-signals-table tbody td {
+  vertical-align: middle;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+
+.buy-exchange-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.buy-symbol {
+  color: #e2e8f0;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+}
+
+.buy-date {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.buy-score {
+  color: #a5b4fc;
+  font-weight: 600;
+}
+
+.buy-target {
+  color: #6ee7b7;
+  font-weight: 600;
+}
+
+.buy-signal-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.buy-signal-badge.buy {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.22);
+}
+
+.buy-signal-badge.neutral {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.buy-qty-input {
+  width: 60px !important;
+  font-size: 0.8rem !important;
+  padding: 4px 6px !important;
+  text-align: center;
+}
+
+.buy-exittype-select {
+  font-size: 0.78rem !important;
+  padding: 4px 6px !important;
+  min-width: 130px;
+}
+
+.buy-params-cell {
+  min-width: 110px;
+}
+
+.buy-param-input {
+  width: 88px !important;
+  font-size: 0.78rem !important;
+  padding: 4px 6px !important;
+}
+
+.buy-param-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.buy-params-empty {
+  color: #475569;
+  font-size: 0.82rem;
+}
+
+.buy-params-readonly {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.buy-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  min-width: 52px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.buy-action-btn:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.buy-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.buy-result-col {
+  min-width: 200px;
+}
+
+.buy-result-pending {
+  color: #fbbf24;
+  font-size: 0.78rem;
+}
+
+.buy-result-success {
+  font-size: 0.78rem;
+}
+
+.buy-result-success .buy-result-main {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.buy-result-success .buy-result-detail {
+  color: #6ee7b7;
+  margin-top: 2px;
+}
+
+.buy-result-error {
+  font-size: 0.78rem;
+}
+
+.buy-result-error .buy-result-main {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.buy-result-error .buy-result-detail {
+  color: #fca5a5;
+  margin-top: 2px;
+}
+
+tr.buy-row-success > td {
+  background: rgba(74, 222, 128, 0.04);
+}
+
+tr.buy-row-error > td {
+  background: rgba(248, 113, 113, 0.04);
+}

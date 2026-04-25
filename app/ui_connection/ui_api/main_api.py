@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
 # from ui_connection.ui_api.test_manual_api import router as test_manual_router
 
 from fastapi import FastAPI, HTTPException, Query
@@ -82,8 +81,27 @@ from ui_connection.ui_service.simulator_params_service import (
     save_simulator_params,
 )
 
+from ui_connection.ui_service.sim_buy_ui_service import (
+    SimBuyError,
+    get_buy_signals,
+    run_sim_buy,
+)
+
 class SimulatorParamsSaveRequest(BaseModel):
     params: dict
+
+class SimExecuteBuyRequest(BaseModel):
+    symbol: str
+    exchange: str
+    exit_type: str
+    qty: int = 1
+    username: str = ""
+    target_price: float | None = None
+    stop_price: float | None = None
+    limit_price: float | None = None
+    trigger_price: float | None = None
+    trail_amount: float | None = None
+    trailing_percent: float | None = None
 
 class NotificationTargetRequest(BaseModel):
     target_type: str
@@ -877,4 +895,43 @@ def simulator_parameters_save(request: SimulatorParamsSaveRequest):
         raise HTTPException(
             status_code=500,
             detail={"message": f"Simulator parameters save failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/simulator/available-funds")
+def simulator_available_funds(username: str):
+    try:
+        from ui_connection.ui_repository.simulator_repository import fetch_sim_available_funds
+        return fetch_sim_available_funds(username)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Available funds failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/simulator/buy-signals")
+def simulator_buy_signals():
+    try:
+        return get_buy_signals()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Buy signals failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/simulator/execute-buy")
+def simulator_execute_buy(request: SimExecuteBuyRequest):
+    try:
+        return run_sim_buy(request.model_dump())
+    except SimBuyError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Execute buy failed: {str(exc)}"},
         ) from exc

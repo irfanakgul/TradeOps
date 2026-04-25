@@ -36,6 +36,7 @@ import StatsPage from './pages/admin/StatsPage'
 import NotificationsPage from './pages/NotificationsPage'
 import SimulatorWalletOverviewPage from './pages/SimulatorWalletOverviewPage'
 import SimulatorParametersPage from './pages/SimulatorParametersPage'
+import SimulatorBuysPage from './pages/SimulatorBuysPage'
 
 function App() {
   const [showSplash, setShowSplash] = useState(true)
@@ -117,7 +118,7 @@ function App() {
                     element={<SimulatorWalletOverviewPage />}
                   />
                   <Route path="/simulator/parameters" element={<SimulatorParametersPage />} />
-                  <Route path="/simulator/buys" element={<SimulatorWalletOverviewPage />} />
+                  <Route path="/simulator/buys" element={<SimulatorBuysPage />} />
                   <Route path="/simulator/trade-logs" element={<SimulatorWalletOverviewPage />} />
 
                 </Routes>
