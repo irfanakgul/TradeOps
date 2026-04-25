@@ -145,6 +145,17 @@ export default function AppHeader() {
               {language === 'tr' ? 'Admin Paneli' : 'Admin Panel'}
             </Link>
 
+            {user.userType === 'ADMIN' && (
+              <Link
+                to="/simulator/wallet-overview"
+                className={`header-nav-btn ${
+                  location.pathname.startsWith('/simulator') ? 'active' : ''
+                }`}
+              >
+                Simulator
+              </Link>
+            )}
+
             <Link
               to="/user-panel"
               className="header-nav-btn header-user-btn header-user-btn-wide"

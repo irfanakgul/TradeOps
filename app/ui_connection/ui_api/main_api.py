@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
-from ui_connection.ui_api.test_manual_api import router as test_manual_router
+# from ui_connection.ui_api.test_manual_api import router as test_manual_router
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -70,6 +70,20 @@ from ui_connection.ui_service.wallet_overview_service import (
     get_wallet_overview,
 )
 
+from ui_connection.ui_service.simulator_service import (
+    SimulatorError,
+    get_simulator_wallet_overview,
+    update_and_get_simulator_wallet_overview,
+)
+
+from ui_connection.ui_service.simulator_params_service import (
+    SimulatorParamsError,
+    get_simulator_params,
+    save_simulator_params,
+)
+
+class SimulatorParamsSaveRequest(BaseModel):
+    params: dict
 
 class NotificationTargetRequest(BaseModel):
     target_type: str
@@ -181,9 +195,19 @@ class ContactFormRequest(BaseModel):
     message: str
     language: str | None = None
 
+class SimulatorWalletRequest(BaseModel):
+    requesting_username: str
+    requesting_user_type: str
+    selected_username: str | None = None
+
+class SimulatorWalletRequest(BaseModel):
+    requesting_username: str
+    requesting_user_type: str
+    selected_username: str | None = None
+    language: str | None = "en"
 
 app = FastAPI(title="TradeOPS UI API")
-app.include_router(test_manual_router)
+# app.include_router(test_manual_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -787,4 +811,70 @@ def user_notifications_delete(request: NotificationUserActionRequest):
         raise HTTPException(
             status_code=500,
             detail={"message": f"Delete notification failed: {str(exc)}"},
+        ) from exc
+    
+@app.post("/api/simulator/wallet-overview")
+def simulator_wallet_overview(request: SimulatorWalletRequest):
+    try:
+        return get_simulator_wallet_overview(
+            requesting_username=request.requesting_username,
+            requesting_user_type=request.requesting_user_type,
+            selected_username=request.selected_username,
+        )
+    except SimulatorError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Simulator wallet overview failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/simulator/wallet-overview/update")
+def simulator_wallet_overview_update(request: SimulatorWalletRequest):
+    try:
+        return update_and_get_simulator_wallet_overview(
+        requesting_username=request.requesting_username,
+        requesting_user_type=request.requesting_user_type,
+        selected_username=request.selected_username,
+        language=request.language or "en",
+    )
+    except SimulatorError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Simulator wallet update failed: {str(exc)}"},
+        ) from exc
+    
+@app.get("/api/simulator/parameters")
+def simulator_parameters():
+    try:
+        return get_simulator_params()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Simulator parameters failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/simulator/parameters/save")
+def simulator_parameters_save(request: SimulatorParamsSaveRequest):
+    try:
+        return save_simulator_params(request.model_dump())
+    except SimulatorParamsError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Simulator parameters save failed: {str(exc)}"},
         ) from exc

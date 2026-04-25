@@ -2835,3 +2835,165 @@ body {
     margin-bottom: 12px;
   }
 }
+
+.sim-wallet-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.sim-wallet-card {
+  border-radius: 18px;
+  padding: 16px;
+  border: 1px solid rgba(157, 184, 214, 0.12);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.sim-wallet-card.paper {
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.12);
+}
+
+.sim-wallet-card.live {
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.12);
+}
+
+.sim-wallet-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  color: #e6eef8;
+  font-weight: 900;
+}
+
+.sim-wallet-card-head small {
+  color: #8ea7bf;
+  font-weight: 600;
+}
+
+.sim-wallet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sim-wallet-grid div {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.sim-wallet-grid span {
+  display: block;
+  font-size: 0.76rem;
+  color: #8ea7bf;
+  margin-bottom: 6px;
+}
+
+.sim-wallet-grid strong {
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.sim-range-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.sim-chart-card {
+  height: 390px;
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(157, 184, 214, 0.1);
+}
+
+.sim-update-btn {
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  background: linear-gradient(135deg, #0ea5e9, #22c55e);
+  color: #ffffff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sim-update-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .sim-wallet-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .sim-wallet-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sim-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(157, 184, 214, 0.08);
+}
+
+.sim-tab-link {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  color: #a9bbcf;
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.sim-tab-link:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sim-tab-link.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.24), rgba(59, 130, 246, 0.16));
+  border: 1px solid rgba(96, 165, 250, 0.18);
+}
+
+.sim-mode-badge-row {
+  margin: 10px 0 14px;
+}
+
+.sim-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.sim-mode-badge.paper {
+  color: #fed7aa;
+  background: rgba(249, 115, 22, 0.14);
+  border: 1px solid rgba(249, 115, 22, 0.24);
+}
+
+.sim-mode-badge.live {
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.24);
+}

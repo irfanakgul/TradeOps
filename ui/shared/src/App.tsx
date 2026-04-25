@@ -34,6 +34,8 @@ import AdminParamsPage from './pages/admin/AdminParamsPage'
 import NotificationSenderPage from './pages/admin/NotificationSenderPage'
 import StatsPage from './pages/admin/StatsPage'
 import NotificationsPage from './pages/NotificationsPage'
+import SimulatorWalletOverviewPage from './pages/SimulatorWalletOverviewPage'
+import SimulatorParametersPage from './pages/SimulatorParametersPage'
 
 function App() {
   const [showSplash, setShowSplash] = useState(true)
@@ -110,6 +112,14 @@ function App() {
                   <Route path="/admin-panel/admin-params" element={<AdminParamsPage />} />
                   <Route path="/admin-panel/notification-sender" element={<NotificationSenderPage />} />
                   <Route path="/admin-panel/stats" element={<StatsPage />} />
+                  <Route
+                    path="/simulator/wallet-overview"
+                    element={<SimulatorWalletOverviewPage />}
+                  />
+                  <Route path="/simulator/parameters" element={<SimulatorParametersPage />} />
+                  <Route path="/simulator/buys" element={<SimulatorWalletOverviewPage />} />
+                  <Route path="/simulator/trade-logs" element={<SimulatorWalletOverviewPage />} />
+
                 </Routes>
 
                 <NotificationPopupGate />

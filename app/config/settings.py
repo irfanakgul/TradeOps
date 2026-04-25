@@ -97,10 +97,10 @@ class AppSettings:
     RUN_ON_SCHEDULE: bool
     MANUAL_TRIGGER_PIPELINES: List[str]
 
-    SIM_IBKR_MODE: str = "PAPER"
-    SIM_IBKR_HOST: str = "127.0.0.1"
-    SIM_IBKR_PORT: int = 7497
-    SIM_IBKR_CLIENT_ID: int = 1
+    SIM_IBKR_MODE: str 
+    SIM_IBKR_HOST: str 
+    SIM_IBKR_PORT: int 
+    SIM_IBKR_CLIENT_ID: int
 
 
 def load_settings() -> AppSettings:
@@ -193,6 +193,11 @@ def _validate_settings(settings: AppSettings) -> None:
 
     if not settings.APP_VERSION.strip():
         raise ValueError("APP_VERSION cannot be empty")
+
+    if settings.SIM_IBKR_MODE not in {"PAPER", "LIVE"}:
+        raise ValueError(
+            f"SIM_IBKR_MODE must be one of PAPER/LIVE, got: {settings.SIM_IBKR_MODE}"
+        )
 
     for name in [
         "ACCOUNT_SNAPSHOT_POST_EU_BUY_TIME",
