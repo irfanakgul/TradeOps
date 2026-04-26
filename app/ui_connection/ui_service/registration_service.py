@@ -282,6 +282,14 @@ def register_user(payload: dict) -> dict:
         }
     )
 
+    # Clone catalog defaults into user.open_parameters for the new user.
+    # Failures here must NOT block registration — log and continue.
+    try:
+        from ui_connection.ui_service.parameter_service import seed_defaults_for_user
+        seed_defaults_for_user(username)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[registration] seed_defaults_for_user failed for {username}: {exc}", flush=True)
+
     send_email(
         to_email=email,
         subject=msg(lang, "mail_subject_1"),

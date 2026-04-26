@@ -77,14 +77,14 @@ def get_market_indices() -> dict:
     results: list[dict] = []
     with ThreadPoolExecutor(max_workers=4) as pool:
         futs = {
-            pool.submit(_fetch_one, label, sym, exch): label
-            for (label, sym, exch) in INDICES
+            pool.submit(_fetch_one, label, candidates): label
+            for (label, candidates) in INDICES
         }
         for fut in as_completed(futs):
             results.append(fut.result())
 
     # Preserve original order by label
-    order = {label: i for i, (label, _, _) in enumerate(INDICES)}
+    order = {label: i for i, (label, _) in enumerate(INDICES)}
     results.sort(key=lambda r: order.get(r.get("label", ""), 99))
 
     _CACHE["data"] = results
