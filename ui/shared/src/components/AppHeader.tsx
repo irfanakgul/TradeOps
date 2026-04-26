@@ -121,7 +121,7 @@ export default function AppHeader() {
               to="/broker"
               className={`header-nav-btn ${location.pathname === '/broker' ? 'active' : ''}`}
             >
-              {language === 'tr' ? 'Broker Paneli' : 'Broker Panel'}
+              {language === 'tr' ? 'Trade Paneli' : 'Trade Panel'}
             </Link>
 
             <Link

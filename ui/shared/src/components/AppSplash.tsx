@@ -184,6 +184,10 @@ export default function AppSplash() {
           {MESSAGES[msgIdx]}
         </p>
       </div>
+
+      <p className="splash-copyright">
+        TradeOps &mdash; powered by IrfanA &copy;2026 &mdash; All Rights Reserved
+      </p>
     </div>
   )
 }

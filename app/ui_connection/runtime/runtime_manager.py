@@ -42,7 +42,9 @@ class RuntimeManager:
         else:
             self._server_executable_path = self._base_dir / "dist" / "tradeops_server"
 
-        self._tws_app_path = Path(getattr(self._settings, "TWS_APP_PATH", "") or "")
+        self._tws_app_path = self._resolve_tws_path(
+            getattr(self._settings, "TWS_APP_PATH", "") or ""
+        )
 
         self._start_monitor_thread()
     # ---------------------------------------------------------
@@ -53,7 +55,42 @@ class RuntimeManager:
 
     def _reload_settings(self) -> None:
         self._settings = load_settings()
-        self._tws_app_path = Path(getattr(self._settings, "TWS_APP_PATH", "") or "")
+        self._tws_app_path = self._resolve_tws_path(
+            getattr(self._settings, "TWS_APP_PATH", "") or ""
+        )
+
+    def _resolve_tws_path(self, configured: str) -> Path:
+        """
+        Use the configured TWS path if it exists. Otherwise scan common
+        macOS install locations (IBKR's default is ~/Applications/Trader Workstation/).
+        """
+        if configured:
+            candidate = Path(configured)
+            if candidate.exists():
+                return candidate
+
+        if sys.platform != "darwin":
+            return Path(configured)
+
+        search_roots = [
+            Path.home() / "Applications",
+            Path("/Applications"),
+        ]
+
+        for root in search_roots:
+            if not root.exists():
+                continue
+            # Versioned installs: ~/Applications/Trader Workstation 11.27/Trader Workstation.app
+            for tws_dir in sorted(root.glob("Trader Workstation*"), reverse=True):
+                if tws_dir.is_dir():
+                    inner_app = tws_dir / "Trader Workstation.app"
+                    if inner_app.exists():
+                        return inner_app
+                    # Sometimes the .app itself sits directly under root
+                    if tws_dir.suffix == ".app":
+                        return tws_dir
+
+        return Path(configured)
 
     def _log(self, message: str) -> None:
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")

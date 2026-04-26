@@ -33,6 +33,13 @@ TRADE_CONFIG_SCHEMA = {
                 "type": "string",
                 "editable": False,
             },
+            {
+                "key": "TWS_APP_PATH",
+                "label": "TWS App Path",
+                "description": "Full path to Trader Workstation.app on this machine. Auto-detected if left blank.",
+                "type": "string",
+                "editable": True,
+            },
         ],
     },
     "config_env": {

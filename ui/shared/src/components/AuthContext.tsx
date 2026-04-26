@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 
 export type AuthUser = {
   username: string
@@ -14,29 +14,8 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-const STORAGE_KEY = 'tradeops_auth_user'
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUserState] = useState<AuthUser | null>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      return raw ? JSON.parse(raw) : null
-    } catch {
-      return null
-    }
-  })
-
-  useEffect(() => {
-    try {
-      if (user) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
-      } else {
-        localStorage.removeItem(STORAGE_KEY)
-      }
-    } catch {
-      // sessiz geç
-    }
-  }, [user])
+  const [user, setUserState] = useState<AuthUser | null>(null)
 
   function setUser(nextUser: AuthUser | null) {
     setUserState(nextUser)

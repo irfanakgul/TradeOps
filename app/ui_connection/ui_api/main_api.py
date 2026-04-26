@@ -930,9 +930,9 @@ def simulator_available_funds(username: str):
 
 
 @app.get("/api/simulator/buy-signals")
-def simulator_buy_signals():
+def simulator_buy_signals(date: str | None = Query(default=None)):
     try:
-        return get_buy_signals()
+        return get_buy_signals(date_filter=date)
     except Exception as exc:
         raise HTTPException(
             status_code=500,

@@ -132,6 +132,21 @@
   min-height: 1.1em;
 }
 
+/* ── Copyright ─────────────────────────────────── */
+.splash-copyright {
+  position: absolute;
+  bottom: 28px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: rgba(100, 181, 246, 0.28);
+  user-select: none;
+}
+
 /* ── Keyframes ─────────────────────────────────── */
 @keyframes splashFadeUp {
   from {

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from service.sim_ibkr_buy_service import EXCHANGE_CURRENCY_MAP, execute_sim_buy
 from ui_connection.ui_repository.buy_signals_repository import (
+    fetch_all_signal_dates,
     fetch_buy_signals,
     fetch_distinct_exchanges,
     fetch_latest_signal_date,
@@ -18,13 +19,15 @@ class SimBuyError(Exception):
         self.status_code = status_code
 
 
-def get_buy_signals() -> dict:
+def get_buy_signals(date_filter: str | None = None) -> dict:
     latest_date = fetch_latest_signal_date()
     exchanges = fetch_distinct_exchanges()
-    signals = fetch_buy_signals()
+    all_dates = fetch_all_signal_dates()
+    signals = fetch_buy_signals(date_filter=date_filter)
 
     return {
         "latest_date": latest_date,
+        "all_dates": all_dates,
         "exchanges": exchanges,
         "signals": signals,
     }

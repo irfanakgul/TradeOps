@@ -15,6 +15,19 @@ def fetch_latest_signal_date() -> str | None:
     return None
 
 
+def fetch_all_signal_dates() -> list[str]:
+    query = text("""
+        SELECT DISTINCT "DATE"
+        FROM live.daily_buy_signals_all
+        WHERE "DATE" IS NOT NULL
+        ORDER BY "DATE" DESC
+    """)
+    engine = get_ui_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(query).mappings().all()
+    return [str(row["DATE"]) for row in rows]
+
+
 def fetch_buy_signals(date_filter: str | None = None) -> list[dict]:
     if date_filter:
         query = text("""
@@ -24,6 +37,7 @@ def fetch_buy_signals(date_filter: str | None = None) -> list[dict]:
                 "DATE",
                 "TRIAGE_SCORE",
                 "TARGET_PRICE",
+                "APRX_ENTRY_PRICE",
                 "SIGNAL"
             FROM live.daily_buy_signals_all
             WHERE "DATE" = :date_filter
@@ -38,6 +52,7 @@ def fetch_buy_signals(date_filter: str | None = None) -> list[dict]:
                 "DATE",
                 "TRIAGE_SCORE",
                 "TARGET_PRICE",
+                "APRX_ENTRY_PRICE",
                 "SIGNAL"
             FROM live.daily_buy_signals_all
             ORDER BY "DATE" DESC, "TRIAGE_SCORE" DESC
@@ -63,6 +78,7 @@ def fetch_buy_signals(date_filter: str | None = None) -> list[dict]:
             "date": str(row["DATE"]) if row["DATE"] else None,
             "score": _to_float(row["TRIAGE_SCORE"]),
             "target_price": _to_float(row["TARGET_PRICE"]),
+            "aprx_entry_price": _to_float(row["APRX_ENTRY_PRICE"]),
             "signal": row["SIGNAL"],
         }
         for row in rows

@@ -1,13 +1,63 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 import yaml
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-ENV_LOCAL_PATH = BASE_DIR / ".env_local"
-CONFIG_ENV_PATH = BASE_DIR / "config.env"
-EXCHANGE_YAML_PATH = BASE_DIR / "config" / "exchanges.yaml"
+
+
+def _persistent_dir() -> Path:
+    """User-writable location for env files when running as a packaged app."""
+    target = Path.home() / "Library" / "Application Support" / "TradeOps"
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def _resolve_env_local_path() -> Path:
+    if getattr(sys, "frozen", False):
+        return _persistent_dir() / ".env_local"
+    return BASE_DIR / ".env_local"
+
+
+def _resolve_config_env_path() -> Path:
+    if getattr(sys, "frozen", False):
+        return _persistent_dir() / "config.env"
+    return BASE_DIR / "config.env"
+
+
+def _resolve_exchange_yaml_path() -> Path:
+    if getattr(sys, "frozen", False):
+        target = _persistent_dir() / "exchanges.yaml"
+        if not target.exists():
+            # Seed from bundled copy on first read
+            bundled = Path(sys._MEIPASS) / "config" / "exchanges.yaml"
+            if bundled.exists():
+                target.write_text(bundled.read_text(encoding="utf-8"), encoding="utf-8")
+        return target
+    return BASE_DIR / "config" / "exchanges.yaml"
+
+
+ENV_LOCAL_PATH = _resolve_env_local_path()
+CONFIG_ENV_PATH = _resolve_config_env_path()
+EXCHANGE_YAML_PATH = _resolve_exchange_yaml_path()
+
+
+def _detect_tws_path() -> str:
+    if sys.platform != "darwin":
+        return ""
+    for root in [Path.home() / "Applications", Path("/Applications")]:
+        if not root.exists():
+            continue
+        for tws_dir in sorted(root.glob("Trader Workstation*"), reverse=True):
+            if tws_dir.is_dir():
+                inner = tws_dir / "Trader Workstation.app"
+                if inner.exists():
+                    return str(inner)
+                if tws_dir.suffix == ".app":
+                    return str(tws_dir)
+    return ""
 
 
 def _read_env_file(path: Path) -> dict[str, str]:
@@ -58,6 +108,12 @@ def read_env_local() -> dict[str, str]:
     data["IBKR_MODE"] = ibkr_mode
     data["IBKR_PORT"] = "7496" if ibkr_mode == "LIVE" else "7497"
 
+    # Auto-fill TWS_APP_PATH if user hasn't configured it yet
+    if not data.get("TWS_APP_PATH"):
+        detected = _detect_tws_path()
+        if detected:
+            data["TWS_APP_PATH"] = detected
+
     return data
 
 
@@ -74,6 +130,7 @@ def write_env_local(updates: dict[str, str]) -> dict[str, str]:
         "IBKR_MODE": merged.get("IBKR_MODE", "PAPER"),
         "IBKR_PORT": merged.get("IBKR_PORT", "7497"),
         "APP_LOCK_PASSWORD": merged.get("APP_LOCK_PASSWORD", ""),
+        "TWS_APP_PATH": merged.get("TWS_APP_PATH", ""),
     }
 
     _write_env_file(ENV_LOCAL_PATH, writable)
@@ -94,15 +151,14 @@ def write_config_env(updates: dict[str, str]) -> dict[str, str]:
 def read_exchange_yaml() -> list[dict]:
     if not EXCHANGE_YAML_PATH.exists():
         return []
+    raw = EXCHANGE_YAML_PATH.read_text(encoding="utf-8")
+    parsed = yaml.safe_load(raw) or []
+    return parsed
 
-    data = yaml.safe_load(EXCHANGE_YAML_PATH.read_text(encoding="utf-8")) or {}
-    return data.get("EXCHANGES", [])
 
-
-def write_exchange_yaml(updated_exchanges: list[dict]) -> list[dict]:
-    payload = {"EXCHANGES": updated_exchanges}
+def write_exchange_yaml(rows: list[dict]) -> list[dict]:
     EXCHANGE_YAML_PATH.write_text(
-        yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
+        yaml.safe_dump(rows, sort_keys=False, allow_unicode=True),
         encoding="utf-8",
     )
     return read_exchange_yaml()

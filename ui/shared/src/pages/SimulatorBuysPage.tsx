@@ -14,6 +14,7 @@ type SignalRow = {
   date: string
   score: number | null
   target_price: number | null
+  aprx_entry_price: number | null
   signal: string | null
 }
 
@@ -102,6 +103,49 @@ function rowKey(row: SignalRow) {
   return `${row.exchange}_${row.symbol}_${row.date}`
 }
 
+function csvEscape(value: string | number | null | undefined): string {
+  if (value == null) return ''
+  const str = String(value)
+  if (/[";\n\r]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
+}
+
+function holdingDays(rowDate: string | null, snapshotMs: number | null): number | null {
+  if (!rowDate || snapshotMs == null) return null
+  const m = rowDate.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return null
+  // Parse signal date as local midnight to avoid TZ off-by-one
+  const sig = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  const snap = new Date(snapshotMs)
+  const today = new Date(snap.getFullYear(), snap.getMonth(), snap.getDate())
+  const diffMs = today.getTime() - sig.getTime()
+  return Math.floor(diffMs / 86_400_000)
+}
+
+function buildParamsString(state: RowState): string {
+  switch (state.exit_type) {
+    case 'limit':
+      return 'target_price'
+    case 'stop':
+      return state.stop_price ? `stop=${state.stop_price}` : ''
+    case 'stop_limit':
+      return [
+        state.stop_price ? `stop=${state.stop_price}` : '',
+        state.limit_price ? `limit=${state.limit_price}` : '',
+      ].filter(Boolean).join(' / ')
+    case 'market_if_touched':
+      return state.trigger_price ? `trigger=${state.trigger_price}` : ''
+    case 'trailing_stop_amount':
+      return state.trail_amount ? `amount=${state.trail_amount}` : ''
+    case 'trailing_stop_percentage':
+      return `${state.trailing_percent}%`
+    default:
+      return ''
+  }
+}
+
 export default function SimulatorBuysPage() {
   const { language } = useLanguage()
   const { user } = useAuth()
@@ -120,11 +164,13 @@ export default function SimulatorBuysPage() {
 
   const [signals, setSignals] = useState<SignalRow[]>([])
   const [latestDate, setLatestDate] = useState<string | null>(null)
+  const [allDates, setAllDates] = useState<string[]>([])
   const [allExchanges, setAllExchanges] = useState<string[]>([])
   const [simMode, setSimMode] = useState('PAPER')
   const [walletFunds, setWalletFunds] = useState<WalletFunds>({ PAPER: null, LIVE: null })
 
-  const [dateTab, setDateTab] = useState<'latest' | 'all'>('latest')
+  const [dateTab, setDateTab] = useState<'latest' | 'all' | 'specific'>('latest')
+  const [specificDate, setSpecificDate] = useState<string>('')
   const [selectedExchanges, setSelectedExchanges] = useState<Set<string>>(
     new Set(DEFAULT_SELECTED_EXCHANGES),
   )
@@ -135,6 +181,7 @@ export default function SimulatorBuysPage() {
   const [controlsBusy, setControlsBusy] = useState(false)
   const [actualPrices, setActualPrices] = useState<Record<string, ActualPriceState>>({})
   const [pricesLoading, setPricesLoading] = useState(false)
+  const [lastUpdateAt, setLastUpdateAt] = useState<number | null>(null)
 
   function getRowState(row: SignalRow): RowState {
     return rowStates[rowKey(row)] ?? defaultRowState()
@@ -167,6 +214,7 @@ export default function SimulatorBuysPage() {
       if (!res.ok) throw new Error(data?.detail?.message || 'Failed to load signals.')
       setSignals(data.signals || [])
       setLatestDate(data.latest_date || null)
+      setAllDates(data.all_dates || [])
       setAllExchanges(data.exchanges || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load signals.')
@@ -213,9 +261,34 @@ export default function SimulatorBuysPage() {
     let rows = signals
     if (dateTab === 'latest' && latestDate) {
       rows = rows.filter((r) => r.date === latestDate)
+    } else if (dateTab === 'specific' && specificDate) {
+      rows = rows.filter((r) => r.date === specificDate)
     }
     return rows.filter((r) => selectedExchanges.has(r.exchange))
-  }, [signals, dateTab, latestDate, selectedExchanges])
+  }, [signals, dateTab, latestDate, specificDate, selectedExchanges])
+
+  const profitStats = useMemo(() => {
+    const pcts: number[] = []
+    let winners = 0
+    let losers = 0
+    for (const row of filteredSignals) {
+      const ap = actualPrices[rowKey(row)]
+      if (
+        row.aprx_entry_price != null &&
+        row.aprx_entry_price > 0 &&
+        ap?.price != null
+      ) {
+        const pct = ((ap.price - row.aprx_entry_price) / row.aprx_entry_price) * 100
+        pcts.push(pct)
+        if (pct >= 0) winners += 1
+        else losers += 1
+      }
+    }
+    if (pcts.length === 0) return null
+    const sum = pcts.reduce((a, b) => a + b, 0)
+    const avg = sum / pcts.length
+    return { sum, avg, count: pcts.length, winners, losers }
+  }, [filteredSignals, actualPrices])
 
   function toggleExchange(exch: string) {
     setSelectedExchanges((prev) => {
@@ -229,6 +302,7 @@ export default function SimulatorBuysPage() {
   async function fetchActualPrices() {
     if (pricesLoading || filteredSignals.length === 0) return
     setPricesLoading(true)
+    setLastUpdateAt(Date.now())
     const rows = filteredSignals
     for (const row of rows) {
       const key = rowKey(row)
@@ -266,6 +340,80 @@ export default function SimulatorBuysPage() {
       }
     }
     setPricesLoading(false)
+  }
+
+  function handleExport() {
+    if (filteredSignals.length === 0) return
+
+    const balance = walletFunds[simMode as 'PAPER' | 'LIVE']
+    const headers = [
+      'EXCHANGE',
+      'SYMBOL',
+      'DATE',
+      'SCORE',
+      'TARGET',
+      'SIGNAL',
+      'MAX_QTY',
+      'QTY',
+      'EXIT_TYPE',
+      'PARAMS',
+      'ENTRY_PRICE_APRX',
+      'ACTUAL_PRICE',
+      'PRICE_DATE',
+      'HOLDING_DAYS',
+      'ACTUAL_PROFIT_PCT',
+    ]
+
+    const lines: string[] = [headers.join(';')]
+
+    for (const row of filteredSignals) {
+      const key = rowKey(row)
+      const state = getRowState(row)
+      const ap = actualPrices[key]
+      const priceToUse = ap?.price ?? row.target_price
+      const maxQty =
+        balance != null && priceToUse != null && priceToUse > 0
+          ? Math.floor(balance / priceToUse)
+          : null
+      const profitPct =
+        row.aprx_entry_price != null && row.aprx_entry_price > 0 && ap?.price != null
+          ? ((ap.price - row.aprx_entry_price) / row.aprx_entry_price) * 100
+          : null
+      // For export, use snapshot if available, otherwise fall back to "now"
+      const days = holdingDays(row.date, lastUpdateAt ?? Date.now())
+
+      const cells = [
+        row.exchange,
+        row.symbol,
+        row.date ?? '',
+        row.score != null ? row.score.toFixed(2) : '',
+        row.target_price != null ? row.target_price.toFixed(2) : '',
+        row.signal ?? '',
+        maxQty ?? '',
+        state.qty,
+        state.exit_type,
+        buildParamsString(state),
+        row.aprx_entry_price != null ? row.aprx_entry_price.toFixed(2) : '',
+        ap?.price != null ? ap.price.toFixed(4) : '',
+        ap?.price_date ?? '',
+        days ?? '',
+        profitPct != null ? `${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(2)}%` : '',
+      ]
+      lines.push(cells.map(csvEscape).join(';'))
+    }
+
+    // UTF-8 BOM so Excel renders Turkish characters correctly
+    const csv = '﻿' + lines.join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+    a.href = url
+    a.download = `tradeops_buy_signals_${stamp}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   async function handleBuy(row: SignalRow) {
@@ -548,6 +696,29 @@ export default function SimulatorBuysPage() {
                 >
                   {language === 'tr' ? 'Tüm Tarihler' : 'All Dates'}
                 </button>
+                <select
+                  className={`wallet-tab-btn ${dateTab === 'specific' ? 'active' : ''}`}
+                  value={dateTab === 'specific' ? specificDate : ''}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v) {
+                      setSpecificDate(v)
+                      setDateTab('specific')
+                    } else {
+                      setDateTab('latest')
+                    }
+                  }}
+                  style={{ width: 'auto', padding: '10px 14px' }}
+                >
+                  <option value="">
+                    {language === 'tr' ? '— Tarih Seç —' : '— Select Date —'}
+                  </option>
+                  {allDates.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -567,20 +738,99 @@ export default function SimulatorBuysPage() {
               </div>
             )}
 
-            {/* ── Actual Price Update Button + balance info ── */}
+            {/* ── Action buttons (Export + Update Prices) ── */}
             {filteredSignals.length > 0 && (
-              <div className="tl-topbar" style={{ marginTop: 8 }}>
-                <div className="sim-mode-badge-row">
-                  <span className={`sim-mode-badge ${simMode === 'LIVE' ? 'live' : 'paper'}`}>
-                    MODE: {simMode}
-                  </span>
-                  {walletFunds[simMode as 'PAPER' | 'LIVE'] != null && (
-                    <span className={`sim-mode-badge ${simMode === 'LIVE' ? 'live' : 'paper'}`}>
-                      {language === 'tr' ? 'Bakiye:' : 'Balance:'}{' '}
-                      {formatMoney(walletFunds[simMode as 'PAPER' | 'LIVE'])}
+              <div
+                className="tl-topbar"
+                style={{
+                  marginTop: 8,
+                  justifyContent: 'flex-end',
+                  gap: 12,
+                  alignItems: 'center',
+                }}
+              >
+                {profitStats && (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '4px 10px',
+                      borderRadius: 8,
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(157, 184, 214, 0.10)',
+                      fontSize: 11,
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    <span style={{ color: '#94a3b8', textTransform: 'uppercase' }}>
+                      {language === 'tr' ? 'Kazanan' : 'Winners'}
                     </span>
-                  )}
-                </div>
+                    <span style={{ fontWeight: 700, color: '#2196f3', fontSize: 12 }}>
+                      {profitStats.winners}
+                    </span>
+                    <span style={{ color: 'rgba(157, 184, 214, 0.25)' }}>·</span>
+                    <span style={{ color: '#94a3b8', textTransform: 'uppercase' }}>
+                      {language === 'tr' ? 'Kaybeden' : 'Losers'}
+                    </span>
+                    <span style={{ fontWeight: 700, color: '#e53935', fontSize: 12 }}>
+                      {profitStats.losers}
+                    </span>
+                  </div>
+                )}
+                {profitStats && (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '4px 10px',
+                      borderRadius: 8,
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(157, 184, 214, 0.10)',
+                      fontSize: 11,
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    <span style={{ color: '#94a3b8', textTransform: 'uppercase' }}>
+                      {language === 'tr' ? 'Toplam' : 'Sum'}
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: profitStats.sum >= 0 ? '#2196f3' : '#e53935',
+                        fontSize: 12,
+                      }}
+                    >
+                      {profitStats.sum >= 0 ? '+' : ''}
+                      {profitStats.sum.toFixed(2)}%
+                    </span>
+                    <span style={{ color: 'rgba(157, 184, 214, 0.25)' }}>·</span>
+                    <span style={{ color: '#94a3b8', textTransform: 'uppercase' }}>
+                      {language === 'tr' ? 'Ortalama' : 'Avg'}
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: profitStats.avg >= 0 ? '#2196f3' : '#e53935',
+                        fontSize: 12,
+                      }}
+                    >
+                      {profitStats.avg >= 0 ? '+' : ''}
+                      {profitStats.avg.toFixed(2)}%
+                    </span>
+                    <span style={{ color: 'rgba(157, 184, 214, 0.40)', fontSize: 10 }}>
+                      ({profitStats.count})
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="buy-action-btn"
+                  onClick={handleExport}
+                >
+                  {language === 'tr' ? '↓ Excel\'e Aktar' : '↓ Export to Excel'}
+                </button>
                 <button
                   type="button"
                   className="buy-action-btn tl-update-btn"
@@ -625,8 +875,11 @@ export default function SimulatorBuysPage() {
                       <th>QTY</th>
                       <th>EXIT TYPE</th>
                       <th>PARAMS</th>
+                      <th>ENTRY PRICE(APRX.)</th>
                       <th>ACTUAL PRICE</th>
                       <th>PRICE DATE</th>
+                      <th>HOLDING DAYS</th>
+                      <th>ACTUAL PROFIT</th>
                       <th>BUY</th>
                       <th className="buy-result-col">RESULT</th>
                     </tr>
@@ -634,7 +887,7 @@ export default function SimulatorBuysPage() {
                   <tbody>
                     {filteredSignals.length === 0 ? (
                       <tr>
-                        <td colSpan={14} className="orders-empty-cell">
+                        <td colSpan={17} className="orders-empty-cell">
                           {loading
                             ? '...'
                             : language === 'tr'
@@ -756,9 +1009,26 @@ export default function SimulatorBuysPage() {
                             {/* PARAMS */}
                             <td className="buy-params-cell">{renderParamsCell(row)}</td>
 
-                            {/* ACTUAL PRICE */}
+                            {/* ENTRY_PRICE(APRX.) */}
+                            <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              {row.aprx_entry_price != null ? (
+                                <span style={{ fontWeight: 600, color: '#475569' }}>
+                                  {formatMoney(row.aprx_entry_price)}
+                                </span>
+                              ) : (
+                                <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>
+                              )}
+                            </td>
+
+                            {/* ACTUAL PRICE / PRICE DATE / ACTUAL PROFIT */}
                             {(() => {
                               const ap = actualPrices[key]
+                              const entry = row.aprx_entry_price
+                              const cur = ap?.price ?? null
+                              const profitPct =
+                                entry != null && entry > 0 && cur != null
+                                  ? ((cur - entry) / entry) * 100
+                                  : null
                               return (
                                 <>
                                   <td style={{ whiteSpace: 'nowrap' }}>
@@ -792,6 +1062,41 @@ export default function SimulatorBuysPage() {
                                           minute: '2-digit',
                                         })
                                       : <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>}
+                                  </td>
+                                  <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                    {(() => {
+                                      const days = holdingDays(row.date, lastUpdateAt)
+                                      return days != null ? (
+                                        <span style={{ fontWeight: 600, color: '#475569' }}>
+                                          {days}
+                                        </span>
+                                      ) : (
+                                        <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>
+                                      )
+                                    })()}
+                                  </td>
+                                  <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                    {profitPct != null ? (
+                                      <span
+                                        style={{
+                                          display: 'inline-block',
+                                          padding: '3px 10px',
+                                          borderRadius: 6,
+                                          fontWeight: 700,
+                                          fontSize: 13,
+                                          backgroundColor:
+                                            profitPct >= 0
+                                              ? 'rgba(33, 150, 243, 0.12)'
+                                              : 'rgba(229, 57, 53, 0.12)',
+                                          color: profitPct >= 0 ? '#2196f3' : '#e53935',
+                                        }}
+                                      >
+                                        {profitPct >= 0 ? '+' : ''}
+                                        {profitPct.toFixed(2)}%
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>
+                                    )}
                                   </td>
                                 </>
                               )

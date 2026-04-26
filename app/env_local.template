@@ -1,0 +1,39 @@
+USERNAME=
+EMAIL=
+APP_TIMEZONE=Europe/Amsterdam
+
+# ibkr connection info (PAPER or LIVE)
+IBKR_MODE=PAPER
+IBKR_HOST=127.0.0.1
+IBKR_PORT=7497
+IBKR_CLIENT_ID=1
+
+# TEST/SIM ibkr connection info
+SIM_IBKR_MODE=PAPER
+SIM_IBKR_HOST=127.0.0.1
+SIM_IBKR_PORT=7497
+SIM_IBKR_CLIENT_ID=1
+
+# Cloud database
+DB_HOST=
+DB_PORT=5432
+DB_NAME=trade_app
+DB_USER=
+DB_PASSWORD=
+
+# Notifications
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+
+# Email
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+MAIL_FROM=
+
+# TWS path on this Mac — update to match your installation
+TWS_APP_PATH=/Applications/Trader Workstation/Trader Workstation.app
+
+APP_LOCK_PASSWORD=
+APP_VERSION=1.1.0
