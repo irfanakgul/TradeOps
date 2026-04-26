@@ -94,6 +94,7 @@ from ui_connection.ui_service.trade_log_ui_service import (
     get_actual_price,
     get_sim_trade_mode,
 )
+from ui_connection.ui_service.market_indices_service import get_market_indices
 
 class SimulatorParamsSaveRequest(BaseModel):
     params: dict
@@ -937,6 +938,17 @@ def simulator_buy_signals(date: str | None = Query(default=None)):
         raise HTTPException(
             status_code=500,
             detail={"message": f"Buy signals failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/simulator/market-indices")
+def simulator_market_indices():
+    try:
+        return get_market_indices()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Market indices failed: {str(exc)}"},
         ) from exc
 
 

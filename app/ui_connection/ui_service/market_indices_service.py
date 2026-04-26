@@ -8,19 +8,19 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import certifi
 
 
-# (display_label, tv_symbol, tv_exchange)
-INDICES: list[tuple[str, str, str]] = [
-    ("BIST 100",  "XU100", "BIST"),
-    ("AEX",       "AEX",   "EURONEXT"),
-    ("NASDAQ",    "IXIC",  "NASDAQ"),
-    ("NYSE",      "NYA",   "NYSE"),
+# Each entry: (display_label, [(symbol, exchange), ...] tried in order until one works)
+INDICES: list[tuple[str, list[tuple[str, str]]]] = [
+    ("BIST 100", [("XU100", "BIST"), ("XU100", "TVC")]),
+    ("AEX",      [("AEX", "EURONEXT"), ("AEX", "TVC")]),
+    ("NASDAQ",   [("IXIC", "NASDAQ"), ("IXIC", "TVC"), ("NDX", "NASDAQ")]),
+    ("NYSE",     [("NYA", "NYSE"), ("NYA", "TVC"), ("DJI", "DJ")]),
 ]
 
 _CACHE: dict[str, object] = {"data": None, "ts": 0.0}
 _CACHE_TTL = 60.0  # seconds
 
 
-def _fetch_one(label: str, symbol: str, exchange: str) -> dict:
+def _fetch_one(label: str, candidates: list[tuple[str, str]]) -> dict:
     try:
         from tvDatafeed import TvDatafeed, Interval
 
@@ -29,30 +29,41 @@ def _fetch_one(label: str, symbol: str, exchange: str) -> dict:
         os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
         tv = TvDatafeed()
-        df = tv.get_hist(
-            symbol=symbol,
-            exchange=exchange,
-            interval=Interval.in_daily,
-            n_bars=2,
-        )
 
-        if df is None or df.empty or len(df) < 2:
-            return {"label": label, "ok": False, "reason": "no data"}
+        last_reason = "no data"
+        for symbol, exchange in candidates:
+            try:
+                df = tv.get_hist(
+                    symbol=symbol,
+                    exchange=exchange,
+                    interval=Interval.in_daily,
+                    n_bars=2,
+                )
+            except Exception as inner:  # noqa: BLE001
+                last_reason = f"{exchange}:{symbol} -> {inner}"
+                continue
 
-        prev_close = float(df["close"].iloc[-2])
-        last_close = float(df["close"].iloc[-1])
-        if prev_close <= 0:
-            return {"label": label, "ok": False, "reason": "invalid prev close"}
+            if df is None or df.empty or len(df) < 2:
+                last_reason = f"{exchange}:{symbol} -> no data"
+                continue
 
-        change_pct = (last_close - prev_close) / prev_close * 100
+            prev_close = float(df["close"].iloc[-2])
+            last_close = float(df["close"].iloc[-1])
+            if prev_close <= 0:
+                last_reason = f"{exchange}:{symbol} -> invalid prev close"
+                continue
 
-        return {
-            "label": label,
-            "ok": True,
-            "last": round(last_close, 2),
-            "change_pct": round(change_pct, 2),
-        }
-    except Exception as exc:  # noqa: BLE001 — surface failure per index, don't crash
+            change_pct = (last_close - prev_close) / prev_close * 100
+            return {
+                "label": label,
+                "ok": True,
+                "last": round(last_close, 2),
+                "change_pct": round(change_pct, 2),
+                "source": f"{exchange}:{symbol}",
+            }
+
+        return {"label": label, "ok": False, "reason": last_reason}
+    except Exception as exc:  # noqa: BLE001
         return {"label": label, "ok": False, "reason": str(exc)}
 
 

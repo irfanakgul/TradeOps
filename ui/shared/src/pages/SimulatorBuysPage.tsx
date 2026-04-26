@@ -182,6 +182,9 @@ export default function SimulatorBuysPage() {
   const [actualPrices, setActualPrices] = useState<Record<string, ActualPriceState>>({})
   const [pricesLoading, setPricesLoading] = useState(false)
   const [lastUpdateAt, setLastUpdateAt] = useState<number | null>(null)
+  const [marketIndices, setMarketIndices] = useState<
+    { label: string; ok: boolean; last?: number; change_pct?: number }[]
+  >([])
 
   function getRowState(row: SignalRow): RowState {
     return rowStates[rowKey(row)] ?? defaultRowState()
@@ -256,6 +259,25 @@ export default function SimulatorBuysPage() {
     loadSimParams()
     loadWalletFunds()
   }, [user?.username, user?.userType, selectedUsername])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadIndices() {
+      try {
+        const res = await fetch('http://127.0.0.1:8000/api/simulator/market-indices')
+        const data = await res.json()
+        if (!cancelled && data?.indices) setMarketIndices(data.indices)
+      } catch {
+        // sessiz geç
+      }
+    }
+    loadIndices()
+    const id = window.setInterval(loadIndices, 60_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [])
 
   const filteredSignals = useMemo(() => {
     let rows = signals
@@ -822,6 +844,50 @@ export default function SimulatorBuysPage() {
                     <span style={{ color: 'rgba(157, 184, 214, 0.40)', fontSize: 10 }}>
                       ({profitStats.count})
                     </span>
+                  </div>
+                )}
+                {marketIndices.length > 0 && (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '4px 10px',
+                      borderRadius: 8,
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(157, 184, 214, 0.10)',
+                      fontSize: 11,
+                      letterSpacing: '0.04em',
+                    }}
+                    title={language === 'tr' ? 'Günlük borsa endeksleri' : 'Daily market indices'}
+                  >
+                    {marketIndices.map((idx, i) => (
+                      <span
+                        key={idx.label}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      >
+                        {i > 0 && (
+                          <span style={{ color: 'rgba(157, 184, 214, 0.25)' }}>·</span>
+                        )}
+                        <span style={{ color: '#94a3b8', textTransform: 'uppercase' }}>
+                          {idx.label}
+                        </span>
+                        {idx.ok && idx.change_pct != null ? (
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              color: idx.change_pct >= 0 ? '#2196f3' : '#e53935',
+                              fontSize: 12,
+                            }}
+                          >
+                            {idx.change_pct >= 0 ? '+' : ''}
+                            {idx.change_pct.toFixed(2)}%
+                          </span>
+                        ) : (
+                          <span style={{ color: 'rgba(157, 184, 214, 0.30)' }}>—</span>
+                        )}
+                      </span>
+                    ))}
                   </div>
                 )}
                 <button
