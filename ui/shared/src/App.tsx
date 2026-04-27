@@ -1,14 +1,17 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 
 import { LanguageProvider } from './components/LanguageContext'
 import { AuthProvider } from './components/AuthContext'
 import { RuntimeProvider } from './components/RuntimeContext'
 import { SelectedUserProvider } from './components/SelectedUserContext'
 import { AppLockProvider } from './components/AppLockContext'
+import { UpdateProvider } from './components/UpdateContext'
 
 import AppLockOverlay from './components/AppLockOverlay'
 import NotificationPopupGate from './components/NotificationPopupGate'
+import UpdateNotification from './components/UpdateNotification'
 import AppSplash from './components/AppSplash'
 
 // Pages
@@ -33,6 +36,7 @@ import ContactFormsPage from './pages/admin/ContactFormsPage'
 import AdminParamsPage from './pages/admin/AdminParamsPage'
 import NotificationSenderPage from './pages/admin/NotificationSenderPage'
 import StatsPage from './pages/admin/StatsPage'
+import ReleasesPage from './pages/admin/ReleasesPage'
 import NotificationsPage from './pages/NotificationsPage'
 import SimulatorWalletOverviewPage from './pages/SimulatorWalletOverviewPage'
 import SimulatorParametersPage from './pages/SimulatorParametersPage'
@@ -41,12 +45,35 @@ import SimulatorTradeLogsPage from './pages/SimulatorTradeLogsPage'
 
 function App() {
   const [showSplash, setShowSplash] = useState(true)
+  const [isUpdateRelaunch, setIsUpdateRelaunch] = useState(false)
 
   useEffect(() => {
     let isMounted = true
 
-    // minimum splash süresi
-    const minDelay = new Promise((resolve) => setTimeout(resolve, 4500))
+    // Was the previous run an in-app update? If so, render a richer splash.
+    // Also persist the signal in sessionStorage so UpdateContext can show
+    // its post-update toast (otherwise the marker file is consumed once).
+    ;(async () => {
+      const KEY = 'tradeops_post_update'
+      if (sessionStorage.getItem(KEY)) {
+        if (isMounted) setIsUpdateRelaunch(true)
+        return
+      }
+      try {
+        const fromUpdate = await invoke<boolean>('consume_update_marker')
+        if (fromUpdate) {
+          sessionStorage.setItem(KEY, '1')
+          if (isMounted) setIsUpdateRelaunch(true)
+        }
+      } catch {
+        // not running under Tauri (web mode) — fine
+      }
+    })()
+
+    // Splash hold time: 5s after an update so the "Update Complete" intro is
+    // visible end-to-end; otherwise the regular 4.5s.
+    const minMs = isUpdateRelaunch ? 5000 : 4500
+    const minDelay = new Promise((resolve) => setTimeout(resolve, minMs))
 
     // backend hazır mı kontrol
     const backendReady = (async () => {
@@ -73,21 +100,23 @@ function App() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [isUpdateRelaunch])
 
   // 🔥 Splash burada devreye giriyor
   if (showSplash) {
-    return <AppSplash />
+    return <AppSplash updateMode={isUpdateRelaunch} />
   }
 
   return (
     <LanguageProvider>
       <AuthProvider>
+        <UpdateProvider>
         <RuntimeProvider>
           <SelectedUserProvider>
             <AppLockProvider>
               <BrowserRouter>
                 <AppLockOverlay />
+                <UpdateNotification />
 
                 <Routes>
                   <Route path="/" element={<HomePage />} />
@@ -114,6 +143,7 @@ function App() {
                   <Route path="/admin-panel/admin-params" element={<AdminParamsPage />} />
                   <Route path="/admin-panel/notification-sender" element={<NotificationSenderPage />} />
                   <Route path="/admin-panel/stats" element={<StatsPage />} />
+                  <Route path="/admin-panel/releases" element={<ReleasesPage />} />
                   <Route
                     path="/simulator/wallet-overview"
                     element={<SimulatorWalletOverviewPage />}
@@ -129,6 +159,7 @@ function App() {
             </AppLockProvider>
           </SelectedUserProvider>
         </RuntimeProvider>
+        </UpdateProvider>
       </AuthProvider>
     </LanguageProvider>
   )

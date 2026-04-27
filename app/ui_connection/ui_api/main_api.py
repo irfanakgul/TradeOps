@@ -95,6 +95,24 @@ from ui_connection.ui_service.trade_log_ui_service import (
     get_sim_trade_mode,
 )
 from ui_connection.ui_service.market_indices_service import get_market_indices
+from ui_connection.ui_service.release_service import (
+    ReleaseError,
+    admin_create_release,
+    admin_delete_release,
+    admin_list_releases,
+    admin_update_release,
+    admin_users_on_version,
+    admin_version_distribution,
+    check_for_update,
+)
+from ui_connection.ui_service.session_handoff_service import (
+    consume_pending_login,
+    save_pending_login,
+)
+from ui_connection.ui_service.build_service import (
+    get_status as build_get_status,
+    start_build as build_start,
+)
 
 class SimulatorParamsSaveRequest(BaseModel):
     params: dict
@@ -950,6 +968,152 @@ def simulator_market_indices():
             status_code=500,
             detail={"message": f"Market indices failed: {str(exc)}"},
         ) from exc
+
+
+# ============================================================================
+# Release / Update endpoints
+# ============================================================================
+
+class ReleaseCreateRequest(BaseModel):
+    version: str
+    download_url: str
+    release_notes_tr: str | None = None
+    release_notes_en: str | None = None
+    is_mandatory: bool = False
+    min_version: str | None = None
+    sha256: str | None = None
+    is_active: bool = True
+    requesting_username: str
+    requesting_user_type: str
+
+
+class ReleaseUpdateRequest(BaseModel):
+    version: str | None = None
+    download_url: str | None = None
+    release_notes_tr: str | None = None
+    release_notes_en: str | None = None
+    is_mandatory: bool | None = None
+    min_version: str | None = None
+    sha256: str | None = None
+    is_active: bool | None = None
+    requesting_user_type: str
+
+
+@app.get("/api/app/check-update")
+def app_check_update(
+    current: str = Query(default=""),
+    username: str | None = Query(default=None),
+):
+    try:
+        return check_for_update(current_version=current, username=username)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
+
+
+@app.get("/api/app/releases")
+def app_releases_list(requesting_user_type: str = Query(default="CLIENT")):
+    try:
+        return {"releases": admin_list_releases(requesting_user_type)}
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+@app.post("/api/app/releases")
+def app_releases_create(request: ReleaseCreateRequest):
+    try:
+        record = admin_create_release(
+            request.model_dump(exclude={"requesting_username", "requesting_user_type"}),
+            requesting_username=request.requesting_username,
+            requesting_user_type=request.requesting_user_type,
+        )
+        return {"success": True, "release": record}
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+@app.patch("/api/app/releases/{release_id}")
+def app_releases_update(release_id: int, request: ReleaseUpdateRequest):
+    try:
+        record = admin_update_release(
+            release_id,
+            request.model_dump(exclude={"requesting_user_type"}, exclude_none=True),
+            requesting_user_type=request.requesting_user_type,
+        )
+        return {"success": True, "release": record}
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+@app.delete("/api/app/releases/{release_id}")
+def app_releases_delete(release_id: int, requesting_user_type: str = Query(default="CLIENT")):
+    try:
+        return admin_delete_release(release_id, requesting_user_type)
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+@app.get("/api/app/version-distribution")
+def app_version_distribution(requesting_user_type: str = Query(default="CLIENT")):
+    try:
+        return admin_version_distribution(requesting_user_type)
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+class PendingLoginRequest(BaseModel):
+    user: dict
+
+
+@app.post("/api/session/save-pending-login")
+def session_save_pending_login(request: PendingLoginRequest):
+    try:
+        save_pending_login(request.user)
+        return {"success": True}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
+
+
+@app.get("/api/session/consume-pending-login")
+def session_consume_pending_login():
+    try:
+        user = consume_pending_login()
+        return {"user": user}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Local DMG build (admin Releases page) — runs the same packaging steps the
+# developer would do by hand. Only meaningful on the dev machine.
+# ────────────────────────────────────────────────────────────────────────────
+
+class BuildStartRequest(BaseModel):
+    platform: str
+    requesting_user_type: str
+
+
+@app.post("/api/app/build-dmg")
+def app_build_dmg(request: BuildStartRequest):
+    result = build_start(request.platform, request.requesting_user_type)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail={"message": result.get("message", "failed")})
+    return result
+
+
+@app.get("/api/app/build-status")
+def app_build_status():
+    return build_get_status()
+
+
+@app.get("/api/app/users-on-version")
+def app_users_on_version(
+    version: str = Query(...),
+    requesting_user_type: str = Query(default="CLIENT"),
+):
+    try:
+        return admin_users_on_version(version, requesting_user_type)
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
 
 
 @app.post("/api/simulator/execute-buy")

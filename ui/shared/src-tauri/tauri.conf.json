@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "TradeOps",
-  "version": "1.1.0",
+  "version": "1.2.9",
   "identifier": "com.tradeops.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -42,9 +42,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "../../../app/env_local.template": "env_local.template"
-    },
     "externalBin": [
       "binaries/tradeops_backend",
       "binaries/tradeops_server"

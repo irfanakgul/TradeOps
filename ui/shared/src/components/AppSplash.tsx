@@ -8,6 +8,13 @@ const MESSAGES = [
   'Preparing dashboard...',
 ]
 
+const UPDATE_MESSAGES = [
+  'Update installed successfully...',
+  'Verifying new version...',
+  'Restoring your session...',
+  'Almost ready...',
+]
+
 function EmbossedGear() {
   const cx = 110
   const cy = 110
@@ -142,15 +149,16 @@ function EmbossedGear() {
   )
 }
 
-export default function AppSplash() {
+export default function AppSplash({ updateMode = false }: { updateMode?: boolean }) {
   const [msgIdx, setMsgIdx] = useState(0)
+  const messages = updateMode ? UPDATE_MESSAGES : MESSAGES
 
   useEffect(() => {
     const id = setInterval(() => {
-      setMsgIdx((i) => (i + 1) % MESSAGES.length)
-    }, 1900)
+      setMsgIdx((i) => (i + 1) % messages.length)
+    }, 1300)
     return () => clearInterval(id)
-  }, [])
+  }, [messages.length])
 
   return (
     <div className="splash-root">
@@ -170,7 +178,9 @@ export default function AppSplash() {
         </div>
 
         {/* Tagline */}
-        <p className="splash-tagline">Professional Trade Automation</p>
+        <p className="splash-tagline">
+          {updateMode ? 'Update Complete · Relaunching' : 'Professional Trade Automation'}
+        </p>
 
         {/* Scanner loader */}
         <div className="splash-scanner-wrap">
@@ -181,7 +191,7 @@ export default function AppSplash() {
 
         {/* Rotating status message */}
         <p className="splash-status" key={msgIdx}>
-          {MESSAGES[msgIdx]}
+          {messages[msgIdx]}
         </p>
       </div>
 

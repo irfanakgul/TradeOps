@@ -1,24 +1,14 @@
+"""
+Exchange configuration loader.
+
+Pulls live exchange configs from user.open_parameters via parameter_service.
+The original YAML file has been retired — defaults live in parameter_catalog.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import List
-import sys
-
-import yaml
-
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-def _resolve_base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        if hasattr(sys, "_MEIPASS"):
-            return Path(sys._MEIPASS)
-        return Path(sys.executable).resolve().parent
-
-    return Path(__file__).resolve().parents[1]
-
-
-EXCHANGES_YAML_PATH = _resolve_base_dir() / "config" / "exchanges.yaml"
 
 
 @dataclass
@@ -37,38 +27,29 @@ class ExchangeConfig:
     CURRENCY: str
 
 
+def _to_dataclass(item: dict) -> ExchangeConfig:
+    return ExchangeConfig(
+        EXCHANGE=str(item["EXCHANGE"]),
+        ENABLED=bool(item.get("ENABLED", True)),
+        BUY_PREPARE_TIME=str(item.get("BUY_PREPARE_TIME", "")),
+        SIGNAL_TIME=str(item.get("SIGNAL_TIME", "")),
+        EOD_RECONCILE_TIME=str(item.get("EOD_RECONCILE_TIME", "")),
+        FORCED_SELL_TIME=str(item.get("FORCED_SELL_TIME", "")),
+        MAX_OPEN_POSITIONS=int(item.get("MAX_OPEN_POSITIONS", 0)),
+        STOP_LOSS_PCT=float(item.get("STOP_LOSS_PCT", 0)),
+        BUDGET_PCT=float(item.get("BUDGET_PCT", 0)),
+        MAX_HOLDING_DAY=int(item.get("MAX_HOLDING_DAY", 0)),
+        FORCED_SELL_MODE=str(item.get("FORCED_SELL_MODE", "FIXED")).upper(),
+        CURRENCY=str(item.get("CURRENCY", "")),
+    )
+
+
 def load_exchange_configs() -> List[ExchangeConfig]:
-    if not EXCHANGES_YAML_PATH.exists():
-        raise FileNotFoundError(f"Missing exchanges config file: {EXCHANGES_YAML_PATH}")
+    # Lazy import keeps this module dependency-light at boot
+    from ui_connection.ui_service.parameter_service import get_exchange_configs
 
-    with open(EXCHANGES_YAML_PATH, "r", encoding="utf-8") as file:
-        raw_data = yaml.safe_load(file) or {}
-
-    exchanges = raw_data.get("EXCHANGES", [])
-    if not isinstance(exchanges, list):
-        raise ValueError("config/exchanges.yaml must contain EXCHANGES as a list")
-
-    configs: List[ExchangeConfig] = []
-
-    for item in exchanges:
-        config = ExchangeConfig(
-            EXCHANGE=item["EXCHANGE"],
-            ENABLED=bool(item["ENABLED"]),
-            BUY_PREPARE_TIME=str(item["BUY_PREPARE_TIME"]),
-            SIGNAL_TIME=str(item["SIGNAL_TIME"]),
-            EOD_RECONCILE_TIME=str(item["EOD_RECONCILE_TIME"]),
-            FORCED_SELL_TIME=str(item["FORCED_SELL_TIME"]),
-            MAX_OPEN_POSITIONS=int(item["MAX_OPEN_POSITIONS"]),
-            STOP_LOSS_PCT=float(item["STOP_LOSS_PCT"]),
-            BUDGET_PCT=float(item["BUDGET_PCT"]),
-            MAX_HOLDING_DAY=int(item["MAX_HOLDING_DAY"]),
-            FORCED_SELL_MODE=str(item["FORCED_SELL_MODE"]).upper(),
-            CURRENCY=str(item["CURRENCY"]),
-        )
-        _validate_exchange_config(config)
-        configs.append(config)
-
-    return configs
+    raw_list = get_exchange_configs()
+    return [_to_dataclass(item) for item in raw_list]
 
 
 def get_enabled_exchanges() -> List[ExchangeConfig]:
@@ -81,35 +62,3 @@ def get_exchange_config(exchange_code: str) -> ExchangeConfig:
         if exchange.EXCHANGE.strip().upper() == normalized:
             return exchange
     raise ValueError(f"Exchange config not found: {exchange_code}")
-
-
-def _validate_exchange_config(config: ExchangeConfig) -> None:
-    if not config.EXCHANGE.strip():
-        raise ValueError("EXCHANGE cannot be empty")
-
-    if config.MAX_OPEN_POSITIONS < 0:
-        raise ValueError(f"{config.EXCHANGE}: MAX_OPEN_POSITIONS cannot be negative")
-
-    if config.STOP_LOSS_PCT <= 0:
-        raise ValueError(f"{config.EXCHANGE}: STOP_LOSS_PCT must be > 0")
-
-    if config.BUDGET_PCT < 0:
-        raise ValueError(f"{config.EXCHANGE}: BUDGET_PCT cannot be negative")
-
-    if config.MAX_HOLDING_DAY <= 0:
-        raise ValueError(f"{config.EXCHANGE}: MAX_HOLDING_DAY must be > 0")
-
-    if config.FORCED_SELL_MODE not in {"FIXED", "FLEXIBLE"}:
-        raise ValueError(
-            f"{config.EXCHANGE}: FORCED_SELL_MODE must be FIXED or FLEXIBLE"
-        )
-
-    for field_name in [
-        "BUY_PREPARE_TIME",
-        "SIGNAL_TIME",
-        "EOD_RECONCILE_TIME",
-        "FORCED_SELL_TIME",
-    ]:
-        value = getattr(config, field_name)
-        if ":" not in value:
-            raise ValueError(f"{config.EXCHANGE}: {field_name} must be in HH:MM format")

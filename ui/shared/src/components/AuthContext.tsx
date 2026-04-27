@@ -1,4 +1,11 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 
 export type AuthUser = {
   username: string
@@ -16,6 +23,29 @@ const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<AuthUser | null>(null)
+
+  // After an in-app update, the previous session is restored from a one-shot
+  // file written before the helper script took over.
+  useEffect(() => {
+    let cancelled = false
+    async function consumePending() {
+      try {
+        const res = await fetch('http://127.0.0.1:8000/api/session/consume-pending-login')
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        if (data?.user && typeof data.user === 'object') {
+          setUserState(data.user as AuthUser)
+        }
+      } catch {
+        // backend not reachable yet — fine, splash screen waits
+      }
+    }
+    consumePending()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function setUser(nextUser: AuthUser | null) {
     setUserState(nextUser)

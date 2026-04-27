@@ -30,6 +30,11 @@ export default function AdminSubnav() {
       tr: 'Stats',
       en: 'Stats',
     },
+    {
+      to: '/admin-panel/releases',
+      tr: 'Releases',
+      en: 'Releases',
+    },
   ]
 
   return (
