@@ -36,11 +36,7 @@ class RuntimeManager:
         self._base_dir = Path(__file__).resolve().parents[2]
         self._main_py_path = self._base_dir / "main.py"
 
-        if self._is_frozen():
-            executable_dir = Path(sys.executable).resolve().parent
-            self._server_executable_path = executable_dir / "tradeops_server"
-        else:
-            self._server_executable_path = self._base_dir / "dist" / "tradeops_server"
+        self._server_executable_path = self._resolve_server_executable_path()
 
         self._tws_app_path = self._resolve_tws_path(
             getattr(self._settings, "TWS_APP_PATH", "") or ""
@@ -58,6 +54,41 @@ class RuntimeManager:
         self._tws_app_path = self._resolve_tws_path(
             getattr(self._settings, "TWS_APP_PATH", "") or ""
         )
+        # Re-resolve server binary path each reload — corrects stale paths
+        # left over from launches off an ejected DMG mount.
+        self._server_executable_path = self._resolve_server_executable_path()
+
+    def _resolve_server_executable_path(self) -> Path:
+        """
+        Find the tradeops_server binary. Tries (in order):
+          1. /Applications/TradeOps.app/Contents/MacOS/tradeops_server   (installed app)
+          2. The dir of sys.executable                                    (sibling of running backend)
+          3. <repo>/app/dist/tradeops_server                              (dev mode)
+        Re-evaluated every time _reload_settings() runs, so a stale value
+        (e.g. from an ejected DMG mount) gets corrected after relaunch.
+        """
+        candidates: list[Path] = []
+
+        # Installed app first — survives DMG ejects
+        candidates.append(Path("/Applications/TradeOps.app/Contents/MacOS/tradeops_server"))
+
+        # Sibling of the running backend
+        try:
+            exe_dir = Path(sys.executable).resolve().parent
+            candidates.append(exe_dir / "tradeops_server")
+        except Exception:
+            pass
+
+        # Dev mode
+        candidates.append(self._base_dir / "dist" / "tradeops_server")
+
+        for cand in candidates:
+            if cand.exists():
+                return cand
+
+        # Fall back to the first candidate even if missing — caller will
+        # surface a clear FileNotFoundError pointing at /Applications.
+        return candidates[0]
 
     def _resolve_tws_path(self, configured: str) -> Path:
         """

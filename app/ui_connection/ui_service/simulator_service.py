@@ -23,54 +23,56 @@ def _app_dir() -> Path:
 
 
 def run_sim_wallet_update_pipeline(language: str = "en") -> dict:
-    app_dir = _app_dir()
+    """
+    Run the sim-update pipeline IN-PROCESS.
 
-    result = subprocess.run(
-        [sys.executable, "-m", "pipeline.run_sim_update_manual"],
-        cwd=str(app_dir),
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
+    Previously this spawned `sys.executable -m pipeline.run_sim_update_manual`
+    as a subprocess. That approach is broken in a frozen PyInstaller binary
+    (sys.executable points to the bundled binary, which doesn't accept `-m`
+    and may even reference an ejected DMG mount path).
+    """
+    from config.settings import load_settings
+    from pipeline.sim_update_pipeline import run_sim_update_pipeline
 
-    output = f"{result.stdout or ''}\n{result.stderr or ''}"
+    settings = load_settings()
 
-    if result.returncode != 0:
+    try:
+        result = run_sim_update_pipeline(
+            username=settings.USERNAME,
+            settings=settings,
+        )
+    except Exception as exc:
+        message = str(exc)
+        lowered = message.lower()
         if (
-            "ConnectionRefusedError" in output
-            or "Connect call failed" in output
-            or "API connection failed" in output
-            or "Make sure API port" in output
+            "connectionrefused" in lowered
+            or "connect call failed" in lowered
+            or "api connection failed" in lowered
+            or "make sure api port" in lowered
         ):
-            from config.settings import load_settings
-
-            settings = load_settings()
             sim_mode = getattr(settings, "SIM_IBKR_MODE", getattr(settings, "IBKR_MODE", "PAPER"))
             sim_port = getattr(settings, "SIM_IBKR_PORT", getattr(settings, "IBKR_PORT", "-"))
 
             if language == "tr":
-                message = (
+                friendly = (
                     f"TWS bağlantısı kurulamadı. Lütfen TWS uygulamasını başlatın, "
                     f"login olun ve API bağlantısının açık olduğundan emin olun. "
                     f"Aktif simulator trade modu: {sim_mode}. Port: {sim_port}."
                 )
             else:
-                message = (
+                friendly = (
                     f"TWS connection could not be established. Please start the TWS application, "
                     f"log in, and make sure the API connection is enabled. "
                     f"Active simulator trade mode: {sim_mode}. Port: {sim_port}."
                 )
 
-            raise SimulatorError(message, 400)
+            raise SimulatorError(friendly, 400) from exc
 
-        raise SimulatorError(
-            f"Simulator wallet update failed: {output}",
-            500,
-        )
+        raise SimulatorError(f"Simulator wallet update failed: {message}", 500) from exc
 
     return {
         "success": True,
-        "stdout": result.stdout,
+        "result": result if isinstance(result, (dict, list)) else str(result),
     }
 
 def get_simulator_wallet_overview(
