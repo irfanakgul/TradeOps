@@ -6,7 +6,6 @@ parameters live in DB and are pulled into a local cache after login.
 """
 
 import os
-import sys
 from pathlib import Path
 
 from uvicorn import run
@@ -18,9 +17,8 @@ load_system_config()
 
 
 def _working_dir() -> Path:
-    target = Path.home() / "Library" / "Application Support" / "TradeOps"
-    target.mkdir(parents=True, exist_ok=True)
-    return target
+    from config.paths import app_support_dir
+    return app_support_dir()
 
 
 os.chdir(_working_dir())

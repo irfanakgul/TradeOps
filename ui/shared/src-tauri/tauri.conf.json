@@ -45,6 +45,17 @@
     "externalBin": [
       "binaries/tradeops_backend",
       "binaries/tradeops_server"
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "displayLanguageSelector": false,
+        "languages": ["English"]
+      }
+    }
   }
 }

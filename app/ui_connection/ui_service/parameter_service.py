@@ -43,9 +43,8 @@ _LOCK = threading.RLock()
 # ---------------------------------------------------------------------------
 
 def _persistent_dir() -> Path:
-    target = Path.home() / "Library" / "Application Support" / "TradeOps"
-    target.mkdir(parents=True, exist_ok=True)
-    return target
+    from config.paths import app_support_dir
+    return app_support_dir()
 
 
 def _cache_path() -> Path:

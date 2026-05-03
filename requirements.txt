@@ -7,3 +7,6 @@ requests
 schedule
 tvDatafeed
 certifi
+fastapi
+uvicorn
+pyyaml

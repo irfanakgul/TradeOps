@@ -1,0 +1,189 @@
+name: Release Build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Override tag (used when not pushing a tag)'
+        required: false
+
+env:
+  PYTHON_VERSION: '3.13'
+  NODE_VERSION: '20'
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────
+  # macOS Apple Silicon (the developer's existing local pipeline,
+  # automated so it doesn't have to be run by hand)
+  # ──────────────────────────────────────────────────────────────────────
+  macos-apple-silicon:
+    name: macOS Apple Silicon
+    runs-on: macos-14   # M1 runner
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Rust toolchain
+        run: |
+          rustup target add aarch64-apple-darwin
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build PyInstaller binaries
+        working-directory: app
+        run: |
+          pyinstaller --clean --noconfirm tradeops_backend.spec
+          pyinstaller --clean --noconfirm tradeops_server.spec
+
+      - name: Stage Tauri sidecars
+        run: |
+          mkdir -p ui/shared/src-tauri/binaries
+          cp app/dist/tradeops_backend ui/shared/src-tauri/binaries/tradeops_backend-aarch64-apple-darwin
+          cp app/dist/tradeops_server  ui/shared/src-tauri/binaries/tradeops_server-aarch64-apple-darwin
+          chmod +x ui/shared/src-tauri/binaries/*
+
+      - name: Install npm deps
+        working-directory: ui/shared
+        run: npm ci
+
+      - name: Tauri build (.app only)
+        working-directory: ui/shared
+        run: npx @tauri-apps/cli build --target aarch64-apple-darwin --bundles app
+
+      - name: Manual ad-hoc sign + DMG
+        env:
+          VERSION: ${{ github.ref_name || inputs.tag }}
+        run: |
+          APP="ui/shared/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/TradeOps.app"
+          codesign --force --sign - --options runtime "$APP/Contents/MacOS/app"
+          codesign --force --sign - "$APP"
+          codesign --verify --strict "$APP"
+
+          STAGE=/tmp/tradeops_dmg_stage
+          OUT="$RUNNER_TEMP/TradeOps_${VERSION#v}_aarch64.dmg"
+          rm -rf "$STAGE" "$OUT"
+          mkdir -p "$STAGE"
+          cp -R "$APP" "$STAGE/TradeOps.app"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname TradeOps -srcfolder "$STAGE" -ov -format UDZO "$OUT"
+          xattr -cr "$OUT"
+          echo "DMG_PATH=$OUT" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradeOps-macOS-AppleSilicon
+          path: ${{ env.DMG_PATH }}
+          if-no-files-found: error
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Windows (x86_64) — full build on a Windows runner
+  # ──────────────────────────────────────────────────────────────────────
+  windows:
+    name: Windows x86_64
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Python deps
+        shell: cmd
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build PyInstaller binaries
+        shell: cmd
+        working-directory: app
+        run: |
+          pyinstaller --clean --noconfirm tradeops_backend.spec
+          pyinstaller --clean --noconfirm tradeops_server.spec
+
+      - name: Stage Tauri sidecars
+        shell: cmd
+        run: |
+          if not exist ui\shared\src-tauri\binaries mkdir ui\shared\src-tauri\binaries
+          copy /Y app\dist\tradeops_backend.exe ui\shared\src-tauri\binaries\tradeops_backend-x86_64-pc-windows-msvc.exe
+          copy /Y app\dist\tradeops_server.exe  ui\shared\src-tauri\binaries\tradeops_server-x86_64-pc-windows-msvc.exe
+
+      - name: Install npm deps
+        shell: cmd
+        working-directory: ui/shared
+        run: npm ci
+
+      - name: Tauri build (NSIS installer)
+        shell: cmd
+        working-directory: ui/shared
+        run: npx @tauri-apps/cli build --target x86_64-pc-windows-msvc --bundles nsis
+
+      - name: Collect Windows artifact
+        shell: pwsh
+        run: |
+          $version = ('${{ github.ref_name }}'.TrimStart('v'))
+          if (-not $version) { $version = '${{ inputs.tag }}'.TrimStart('v') }
+          if (-not $version) { $version = 'dev' }
+          $bundle = "ui/shared/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis"
+          $src = Get-ChildItem -Path $bundle -Filter "*.exe" | Select-Object -First 1
+          $dst = "$env:RUNNER_TEMP\TradeOps_${version}_x64-setup.exe"
+          Copy-Item $src.FullName $dst
+          echo "EXE_PATH=$dst" >> $env:GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradeOps-Windows-x64
+          path: ${{ env.EXE_PATH }}
+          if-no-files-found: error
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Publish a GitHub Release with both artifacts attached (only on tag push)
+  # ──────────────────────────────────────────────────────────────────────
+  release:
+    name: Publish GitHub Release
+    needs: [macos-apple-silicon, windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          files: |
+            artifacts/TradeOps-macOS-AppleSilicon/*
+            artifacts/TradeOps-Windows-x64/*

@@ -19,8 +19,12 @@ def _candidate_paths() -> list[Path]:
     if getattr(sys, "frozen", False):
         meipass = Path(getattr(sys, "_MEIPASS", "."))
         paths.append(meipass / "system_config.env")
-        # Allow override from app support dir
-        paths.append(Path.home() / "Library" / "Application Support" / "TradeOps" / "system_config.env")
+        # Allow override from app support dir (cross-platform)
+        try:
+            from config.paths import app_support_dir
+            paths.append(app_support_dir() / "system_config.env")
+        except Exception:
+            pass
     else:
         # Dev: alongside this module's repo root
         here = Path(__file__).resolve().parent

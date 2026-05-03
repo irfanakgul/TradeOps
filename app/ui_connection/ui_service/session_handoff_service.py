@@ -21,9 +21,8 @@ _TTL_SECONDS = 300  # 5 minutes
 
 
 def _path() -> Path:
-    target = Path.home() / "Library" / "Application Support" / "TradeOps"
-    target.mkdir(parents=True, exist_ok=True)
-    return target / _FILENAME
+    from config.paths import app_support_dir
+    return app_support_dir() / _FILENAME
 
 
 def save_pending_login(user: dict) -> None:
