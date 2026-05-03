@@ -1,0 +1,44 @@
+2) Geliştirme akışı — adım adım
+Yeni bir özellik eklerken bu sırayı izle:
+
+A) Lokal geliştirme + test (DMG yapma)
+Terminal 1 — Backend:
+
+
+cd /Users/yasinyilmaz/Desktop/TradeOps/app && source ../.venv/bin/activate && python desktop_backend_entry.py
+Terminal 2 — Frontend:
+
+
+cd /Users/yasinyilmaz/Desktop/TradeOps/ui/shared && npm run dev
+Tarayıcıda http://localhost:5173. Frontend'de hot-reload var (kod kaydedince anında yenilenir). Backend için Ctrl+C → python desktop_backend_entry.py ile yeniden başlat. Bu modda DMG yapmak gerekmez.
+
+B) Test bittiğinde — yeni sürüm release
+Versiyonu artır:
+
+
+# Hangi versiyonu istiyorsan (örnek 1.4.2)
+sed -i '' "s/APP_VERSION = '.*'/APP_VERSION = '1.4.2'/" ui/shared/src/components/AppVersion.ts
+sed -i '' 's/"version": ".*"/"version": "1.4.2"/' ui/shared/src-tauri/tauri.conf.json
+Commit + push + tag:
+
+
+git add -A
+git commit -m "v1.4.2: <ne ekledin / fix>"
+git push
+git tag v1.4.2 && git push --tags
+GitHub Actions otomatik build alır → ~15 dk sonra Releases/v1.4.2 sayfasında DMG + EXE hazır.
+
+C) Kullanıcılara duyur
+Mac/Win asset URL'lerini Releases sayfasından kopyala
+App'te admin → Releases → "Yeni Sürüm Yayınla":
+Version: 1.4.2
+Download URL: GitHub asset URL'i (öncelik Mac, Windows için ayrı endpoint sonra ekleyebiliriz)
+Notlar
+Yayınla
+Tüm kullanıcıların app'inde update banner'ı çıkar → "Şimdi Güncelle" → otomatik
+D) Hata çıkarsa
+Lokal: backend terminal'inde traceback görünür
+CI fail: GitHub Actions log'unu yapıştır
+Kullanıcı raporu: backend log Mac'te ~/Library/Logs/TradeOps/'ta, Windows'ta %LOCALAPPDATA%\TradeOps\logs\'ta (eğer yapılandırıldıysa)
+Önemli: Çoklu platform URL desteği
+Şu an admin Releases formunda tek download_url var. Mac'e Windows DMG göndermesin diye ileride iki URL alanı ekleyelim (download_url_macos, download_url_windows) — frontend client'in OS'una göre doğru olanı kullansın. Bu eklemeyi şimdi mi yapalım, sonra mı?
