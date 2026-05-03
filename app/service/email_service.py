@@ -4,17 +4,16 @@ import mimetypes
 import html
 from pathlib import Path
 from email.message import EmailMessage
-from dotenv import load_dotenv
 
+# system_config.env (DB + SMTP credentials) is loaded into os.environ by the
+# entry-point scripts via config.system_config_loader.
 BASE_DIR = Path(__file__).resolve().parents[2]
-ENV_PATH = BASE_DIR / "app" / ".env_local"
-load_dotenv(ENV_PATH)
 
-SMTP_HOST = os.getenv("SMTP_HOST")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-MAIL_FROM = os.getenv("MAIL_FROM")
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT") or "587")
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+MAIL_FROM = os.getenv("MAIL_FROM", "")
 
 LOGO_PATH = BASE_DIR / "ui" / "assets" / "logo" / "tradeops-logo.png"
 

@@ -35,17 +35,93 @@ class RuntimeManager:
         self._settings = load_settings()
         self._base_dir = Path(__file__).resolve().parents[2]
         self._main_py_path = self._base_dir / "main.py"
-        self._tws_app_path = Path(getattr(self._settings, "TWS_APP_PATH", "") or "")
+
+        self._server_executable_path = self._resolve_server_executable_path()
+
+        self._tws_app_path = self._resolve_tws_path(
+            getattr(self._settings, "TWS_APP_PATH", "") or ""
+        )
 
         self._start_monitor_thread()
-
     # ---------------------------------------------------------
     # Internal helpers
     # ---------------------------------------------------------
+    def _is_frozen(self) -> bool:
+        return getattr(sys, "frozen", False)
 
     def _reload_settings(self) -> None:
         self._settings = load_settings()
-        self._tws_app_path = Path(getattr(self._settings, "TWS_APP_PATH", "") or "")
+        self._tws_app_path = self._resolve_tws_path(
+            getattr(self._settings, "TWS_APP_PATH", "") or ""
+        )
+        # Re-resolve server binary path each reload — corrects stale paths
+        # left over from launches off an ejected DMG mount.
+        self._server_executable_path = self._resolve_server_executable_path()
+
+    def _resolve_server_executable_path(self) -> Path:
+        """
+        Find the tradeops_server binary. Tries (in order):
+          1. /Applications/TradeOps.app/Contents/MacOS/tradeops_server   (installed app)
+          2. The dir of sys.executable                                    (sibling of running backend)
+          3. <repo>/app/dist/tradeops_server                              (dev mode)
+        Re-evaluated every time _reload_settings() runs, so a stale value
+        (e.g. from an ejected DMG mount) gets corrected after relaunch.
+        """
+        candidates: list[Path] = []
+
+        # Installed app first — survives DMG ejects
+        candidates.append(Path("/Applications/TradeOps.app/Contents/MacOS/tradeops_server"))
+
+        # Sibling of the running backend
+        try:
+            exe_dir = Path(sys.executable).resolve().parent
+            candidates.append(exe_dir / "tradeops_server")
+        except Exception:
+            pass
+
+        # Dev mode
+        candidates.append(self._base_dir / "dist" / "tradeops_server")
+
+        for cand in candidates:
+            if cand.exists():
+                return cand
+
+        # Fall back to the first candidate even if missing — caller will
+        # surface a clear FileNotFoundError pointing at /Applications.
+        return candidates[0]
+
+    def _resolve_tws_path(self, configured: str) -> Path:
+        """
+        Use the configured TWS path if it exists. Otherwise scan common
+        macOS install locations (IBKR's default is ~/Applications/Trader Workstation/).
+        """
+        if configured:
+            candidate = Path(configured)
+            if candidate.exists():
+                return candidate
+
+        if sys.platform != "darwin":
+            return Path(configured)
+
+        search_roots = [
+            Path.home() / "Applications",
+            Path("/Applications"),
+        ]
+
+        for root in search_roots:
+            if not root.exists():
+                continue
+            # Versioned installs: ~/Applications/Trader Workstation 11.27/Trader Workstation.app
+            for tws_dir in sorted(root.glob("Trader Workstation*"), reverse=True):
+                if tws_dir.is_dir():
+                    inner_app = tws_dir / "Trader Workstation.app"
+                    if inner_app.exists():
+                        return inner_app
+                    # Sometimes the .app itself sits directly under root
+                    if tws_dir.suffix == ".app":
+                        return tws_dir
+
+        return Path(configured)
 
     def _log(self, message: str) -> None:
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -126,16 +202,31 @@ class RuntimeManager:
             self._log(f"Server log reader stopped: {exc}")
 
     def _launch_server_process(self) -> None:
-        if not self._main_py_path.exists():
-            raise FileNotFoundError(f"main.py not found: {self._main_py_path}")
+        if self._is_frozen():
+            target_path = self._server_executable_path
 
-        command = [sys.executable, str(self._main_py_path)]
+            if not target_path.exists():
+                raise FileNotFoundError(
+                    f"server executable not found: {target_path}"
+                )
+
+            command = [str(target_path)]
+            cwd = str(target_path.parent)
+        else:
+            target_path = self._main_py_path
+
+            if not target_path.exists():
+                raise FileNotFoundError(f"main.py not found: {target_path}")
+
+            command = [sys.executable, "-u", str(target_path)]
+            cwd = str(self._base_dir)
 
         env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
 
         process = subprocess.Popen(
             command,
-            cwd=str(self._base_dir),
+            cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL,

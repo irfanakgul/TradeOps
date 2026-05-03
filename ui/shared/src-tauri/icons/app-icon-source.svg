@@ -1,0 +1,110 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <defs>
+    <!-- Background gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="42%" r="60%">
+      <stop offset="0%"   stop-color="#0c1f38"/>
+      <stop offset="100%" stop-color="#050c18"/>
+    </radialGradient>
+
+    <!-- Glow for gear ring -->
+    <filter id="ringGlow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Chart line glow -->
+    <filter id="chartGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Clip to hub -->
+    <clipPath id="hubClip">
+      <circle cx="512" cy="512" r="106"/>
+    </clipPath>
+
+    <!-- Chart gradient: blue → white -->
+    <linearGradient id="chartLine" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#42a5f5" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#ffffff"  stop-opacity="1"/>
+    </linearGradient>
+
+    <!-- Hub aura -->
+    <radialGradient id="hubAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#1e88e5" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#1e88e5" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Outer ambient glow -->
+    <radialGradient id="outerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#1a3a6b" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#1a3a6b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="1024" height="1024" rx="220" fill="url(#bgGrad)"/>
+
+  <!-- Outer ambient ring glow -->
+  <circle cx="512" cy="512" r="420" fill="url(#outerGlow)"/>
+
+  <!-- 8 tooth circles (orbit r=348, tooth r=62) -->
+  <!-- top        --> <circle cx="512"  cy="164"  r="62" fill="rgba(7,15,28,0.88)" stroke="#64b5f6" stroke-width="9"/>
+  <!-- top-right  --> <circle cx="758"  cy="266"  r="62" fill="rgba(7,15,28,0.88)" stroke="#64b5f6" stroke-width="9"/>
+  <!-- right      --> <circle cx="860"  cy="512"  r="62" fill="rgba(7,15,28,0.88)" stroke="#64b5f6" stroke-width="9"/>
+  <!-- bot-right  --> <circle cx="758"  cy="758"  r="62" fill="rgba(7,15,28,0.88)" stroke="#64b5f6" stroke-width="9"/>
+  <!-- bottom     --> <circle cx="512"  cy="860"  r="62" fill="rgba(7,15,28,0.88)" stroke="#64b5f6" stroke-width="9"/>
+  <!-- bot-left   --> <circle cx="266"  cy="758"  r="62" fill="rgba(7,15,28,0.88)" stroke="#64b5f6" stroke-width="9"/>
+  <!-- left       --> <circle cx="164"  cy="512"  r="62" fill="rgba(7,15,28,0.88)" stroke="#64b5f6" stroke-width="9"/>
+  <!-- top-left   --> <circle cx="266"  cy="266"  r="62" fill="rgba(7,15,28,0.88)" stroke="#64b5f6" stroke-width="9"/>
+
+  <!-- Main gear ring (r=266) -->
+  <circle cx="512" cy="512" r="266"
+    fill="rgba(7,15,28,0.82)"
+    stroke="#5ba4e8"
+    stroke-width="13"
+    filter="url(#ringGlow)"/>
+
+  <!-- Inner decorative ring (r=222) -->
+  <circle cx="512" cy="512" r="222"
+    fill="none"
+    stroke="rgba(30,136,229,0.22)"
+    stroke-width="4.5"/>
+
+  <!-- Ambient glow behind hub -->
+  <circle cx="512" cy="512" r="165" fill="url(#hubAura)"/>
+
+  <!-- Hub window circle (r=108) -->
+  <circle cx="512" cy="512" r="108"
+    fill="rgba(5,11,21,0.96)"
+    stroke="rgba(100,181,246,0.55)"
+    stroke-width="8"/>
+
+  <!-- Rising chart line inside hub (clipped) -->
+  <g clip-path="url(#hubClip)">
+    <!-- Fill area -->
+    <polygon
+      points="420,614 420,578 462,532 512,554 564,487 600,452 615,614"
+      fill="rgba(30,136,229,0.09)"/>
+
+    <!-- Chart polyline -->
+    <polyline
+      points="420,578 462,532 512,554 564,487 600,452"
+      stroke="url(#chartLine)"
+      stroke-width="14"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      filter="url(#chartGlow)"/>
+
+    <!-- Arrowhead -->
+    <polyline
+      points="580,436 600,452 584,468"
+      stroke="#ffffff"
+      stroke-width="12"
+      stroke-linecap="round"
+      stroke-linejoin="round"/>
+  </g>
+
+  <!-- Tiny center dot -->
+  <circle cx="512" cy="512" r="11" fill="rgba(100,181,246,0.6)"/>
+</svg>

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+# from ui_connection.ui_api.test_manual_api import router as test_manual_router
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,6 +69,66 @@ from ui_connection.ui_service.wallet_overview_service import (
     get_wallet_overview,
 )
 
+from ui_connection.ui_service.simulator_service import (
+    SimulatorError,
+    get_simulator_wallet_overview,
+    update_and_get_simulator_wallet_overview,
+)
+
+from ui_connection.ui_service.simulator_params_service import (
+    SimulatorParamsError,
+    get_simulator_params,
+    save_simulator_params,
+)
+
+from ui_connection.ui_service.sim_buy_ui_service import (
+    SimBuyError,
+    get_buy_signals,
+    run_sim_buy,
+)
+
+from ui_connection.ui_service.trade_log_ui_service import (
+    TradeLogError,
+    execute_sell,
+    fetch_trade_log_positions,
+    get_actual_price,
+    get_sim_trade_mode,
+)
+from ui_connection.ui_service.market_indices_service import get_market_indices
+from ui_connection.ui_service.release_service import (
+    ReleaseError,
+    admin_create_release,
+    admin_delete_release,
+    admin_list_releases,
+    admin_update_release,
+    admin_users_on_version,
+    admin_version_distribution,
+    check_for_update,
+)
+from ui_connection.ui_service.session_handoff_service import (
+    consume_pending_login,
+    save_pending_login,
+)
+from ui_connection.ui_service.build_service import (
+    get_status as build_get_status,
+    start_build as build_start,
+)
+
+class SimulatorParamsSaveRequest(BaseModel):
+    params: dict
+
+class SimExecuteBuyRequest(BaseModel):
+    symbol: str
+    exchange: str
+    exit_type: str
+    qty: int = 1
+    username: str = ""
+    target_price: float | None = None
+    stop_price: float | None = None
+    limit_price: float | None = None
+    trigger_price: float | None = None
+    trail_amount: float | None = None
+    trailing_percent: float | None = None
 
 class NotificationTargetRequest(BaseModel):
     target_type: str
@@ -180,16 +240,35 @@ class ContactFormRequest(BaseModel):
     message: str
     language: str | None = None
 
+class SimulatorWalletRequest(BaseModel):
+    requesting_username: str
+    requesting_user_type: str
+    selected_username: str | None = None
+
+class SimulatorWalletRequest(BaseModel):
+    requesting_username: str
+    requesting_user_type: str
+    selected_username: str | None = None
+    language: str | None = "en"
+
+
+class TradeLogSellRequest(BaseModel):
+    symbol: str
+    exchange: str
+    currency: str
+    username: str
+    ibkr_mode: str
+    buy_exec_id: str | None = None
+    buy_price: float | None = None
+
 
 app = FastAPI(title="TradeOPS UI API")
+# app.include_router(test_manual_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -788,4 +867,348 @@ def user_notifications_delete(request: NotificationUserActionRequest):
         raise HTTPException(
             status_code=500,
             detail={"message": f"Delete notification failed: {str(exc)}"},
+        ) from exc
+    
+@app.post("/api/simulator/wallet-overview")
+def simulator_wallet_overview(request: SimulatorWalletRequest):
+    try:
+        return get_simulator_wallet_overview(
+            requesting_username=request.requesting_username,
+            requesting_user_type=request.requesting_user_type,
+            selected_username=request.selected_username,
+        )
+    except SimulatorError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Simulator wallet overview failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/simulator/wallet-overview/update")
+def simulator_wallet_overview_update(request: SimulatorWalletRequest):
+    try:
+        return update_and_get_simulator_wallet_overview(
+        requesting_username=request.requesting_username,
+        requesting_user_type=request.requesting_user_type,
+        selected_username=request.selected_username,
+        language=request.language or "en",
+    )
+    except SimulatorError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Simulator wallet update failed: {str(exc)}"},
+        ) from exc
+    
+@app.get("/api/simulator/parameters")
+def simulator_parameters():
+    try:
+        return get_simulator_params()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Simulator parameters failed: {str(exc)}"},
+        ) from exc
+
+
+@app.post("/api/simulator/parameters/save")
+def simulator_parameters_save(request: SimulatorParamsSaveRequest):
+    try:
+        return save_simulator_params(request.model_dump())
+    except SimulatorParamsError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Simulator parameters save failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/simulator/available-funds")
+def simulator_available_funds(username: str):
+    try:
+        from ui_connection.ui_repository.simulator_repository import fetch_sim_available_funds
+        return fetch_sim_available_funds(username)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Available funds failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/simulator/buy-signals")
+def simulator_buy_signals(date: str | None = Query(default=None)):
+    try:
+        return get_buy_signals(date_filter=date)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Buy signals failed: {str(exc)}"},
+        ) from exc
+
+
+@app.get("/api/simulator/market-indices")
+def simulator_market_indices():
+    try:
+        return get_market_indices()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Market indices failed: {str(exc)}"},
+        ) from exc
+
+
+# ============================================================================
+# Release / Update endpoints
+# ============================================================================
+
+class ReleaseCreateRequest(BaseModel):
+    version: str
+    download_url: str
+    release_notes_tr: str | None = None
+    release_notes_en: str | None = None
+    is_mandatory: bool = False
+    min_version: str | None = None
+    sha256: str | None = None
+    is_active: bool = True
+    requesting_username: str
+    requesting_user_type: str
+
+
+class ReleaseUpdateRequest(BaseModel):
+    version: str | None = None
+    download_url: str | None = None
+    release_notes_tr: str | None = None
+    release_notes_en: str | None = None
+    is_mandatory: bool | None = None
+    min_version: str | None = None
+    sha256: str | None = None
+    is_active: bool | None = None
+    requesting_user_type: str
+
+
+@app.get("/api/app/check-update")
+def app_check_update(
+    current: str = Query(default=""),
+    username: str | None = Query(default=None),
+):
+    try:
+        return check_for_update(current_version=current, username=username)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
+
+
+@app.get("/api/app/releases")
+def app_releases_list(requesting_user_type: str = Query(default="CLIENT")):
+    try:
+        return {"releases": admin_list_releases(requesting_user_type)}
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+@app.post("/api/app/releases")
+def app_releases_create(request: ReleaseCreateRequest):
+    try:
+        record = admin_create_release(
+            request.model_dump(exclude={"requesting_username", "requesting_user_type"}),
+            requesting_username=request.requesting_username,
+            requesting_user_type=request.requesting_user_type,
+        )
+        return {"success": True, "release": record}
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+@app.patch("/api/app/releases/{release_id}")
+def app_releases_update(release_id: int, request: ReleaseUpdateRequest):
+    try:
+        record = admin_update_release(
+            release_id,
+            request.model_dump(exclude={"requesting_user_type"}, exclude_none=True),
+            requesting_user_type=request.requesting_user_type,
+        )
+        return {"success": True, "release": record}
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+@app.delete("/api/app/releases/{release_id}")
+def app_releases_delete(release_id: int, requesting_user_type: str = Query(default="CLIENT")):
+    try:
+        return admin_delete_release(release_id, requesting_user_type)
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+@app.get("/api/app/version-distribution")
+def app_version_distribution(requesting_user_type: str = Query(default="CLIENT")):
+    try:
+        return admin_version_distribution(requesting_user_type)
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+class PendingLoginRequest(BaseModel):
+    user: dict
+
+
+@app.post("/api/session/save-pending-login")
+def session_save_pending_login(request: PendingLoginRequest):
+    try:
+        save_pending_login(request.user)
+        return {"success": True}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
+
+
+@app.get("/api/session/consume-pending-login")
+def session_consume_pending_login():
+    try:
+        user = consume_pending_login()
+        return {"user": user}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"message": str(exc)}) from exc
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Local DMG build (admin Releases page) — runs the same packaging steps the
+# developer would do by hand. Only meaningful on the dev machine.
+# ────────────────────────────────────────────────────────────────────────────
+
+class BuildStartRequest(BaseModel):
+    platform: str
+    requesting_user_type: str
+
+
+@app.post("/api/app/build-dmg")
+def app_build_dmg(request: BuildStartRequest):
+    result = build_start(request.platform, request.requesting_user_type)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail={"message": result.get("message", "failed")})
+    return result
+
+
+@app.get("/api/app/build-status")
+def app_build_status():
+    return build_get_status()
+
+
+@app.get("/api/app/users-on-version")
+def app_users_on_version(
+    version: str = Query(...),
+    requesting_user_type: str = Query(default="CLIENT"),
+):
+    try:
+        return admin_users_on_version(version, requesting_user_type)
+    except ReleaseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": exc.message}) from exc
+
+
+@app.post("/api/simulator/execute-buy")
+def simulator_execute_buy(request: SimExecuteBuyRequest):
+    try:
+        return run_sim_buy(request.model_dump())
+    except SimBuyError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": f"Execute buy failed: {str(exc)}"},
+        ) from exc
+
+
+# ── Trade Log endpoints ──────────────────────────────────────────────────────
+
+@app.get("/api/simulator/trade-logs/sim-mode")
+def trade_log_sim_mode():
+    try:
+        return {"sim_mode": get_sim_trade_mode()}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(exc)},
+        ) from exc
+
+
+@app.get("/api/simulator/trade-logs/open-positions")
+def trade_log_open_positions(username: str, ibkr_mode: str):
+    try:
+        rows = fetch_trade_log_positions(username, ibkr_mode)
+        return {"rows": rows}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(exc)},
+        ) from exc
+
+
+@app.post("/api/simulator/trade-logs/update-positions")
+def trade_log_update_positions(request: SimulatorWalletRequest):
+    try:
+        from ui_connection.ui_service.simulator_service import run_sim_wallet_update_pipeline
+        run_sim_wallet_update_pipeline(language=request.language or "en")
+        effective_username = request.selected_username or request.requesting_username
+        paper_rows = fetch_trade_log_positions(effective_username, "PAPER")
+        live_rows = fetch_trade_log_positions(effective_username, "LIVE")
+        return {"paper_rows": paper_rows, "live_rows": live_rows}
+    except SimulatorError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(exc)},
+        ) from exc
+
+
+@app.get("/api/simulator/trade-logs/actual-price")
+def trade_log_actual_price(symbol: str, exchange: str):
+    try:
+        return get_actual_price(symbol, exchange)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(exc)},
+        ) from exc
+
+
+@app.post("/api/simulator/trade-logs/sell")
+def trade_log_sell(request: TradeLogSellRequest):
+    try:
+        result = execute_sell(
+            symbol=request.symbol,
+            exchange=request.exchange,
+            currency=request.currency,
+            username=request.username,
+            ibkr_mode=request.ibkr_mode,
+            buy_exec_id=request.buy_exec_id,
+            buy_price_from_db=request.buy_price,
+        )
+        return result
+    except TradeLogError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(exc)},
         ) from exc

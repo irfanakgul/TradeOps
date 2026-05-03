@@ -1,0 +1,97 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <defs>
+
+    <!-- Soft glow for the gear ring -->
+    <filter id="ringGlow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Chart line glow -->
+    <filter id="chartGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Clip to hub circle -->
+    <clipPath id="hubClip">
+      <circle cx="100" cy="100" r="20.5"/>
+    </clipPath>
+
+    <!-- Gradient for the rising chart line: blue → white -->
+    <linearGradient id="chartLine" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#42a5f5" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#ffffff"  stop-opacity="1"/>
+    </linearGradient>
+
+    <!-- Radial glow behind hub -->
+    <radialGradient id="hubAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#1e88e5" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#1e88e5" stop-opacity="0"/>
+    </radialGradient>
+
+  </defs>
+
+  <!-- ── 8 tooth circles (orbit r=68, tooth r=12) ── -->
+  <!-- top        --> <circle cx="100"  cy="32"   r="12" fill="rgba(7,15,28,0.85)" stroke="#64b5f6" stroke-width="1.8"/>
+  <!-- top-right  --> <circle cx="148"  cy="52"   r="12" fill="rgba(7,15,28,0.85)" stroke="#64b5f6" stroke-width="1.8"/>
+  <!-- right      --> <circle cx="168"  cy="100"  r="12" fill="rgba(7,15,28,0.85)" stroke="#64b5f6" stroke-width="1.8"/>
+  <!-- bot-right  --> <circle cx="148"  cy="148"  r="12" fill="rgba(7,15,28,0.85)" stroke="#64b5f6" stroke-width="1.8"/>
+  <!-- bottom     --> <circle cx="100"  cy="168"  r="12" fill="rgba(7,15,28,0.85)" stroke="#64b5f6" stroke-width="1.8"/>
+  <!-- bot-left   --> <circle cx="52"   cy="148"  r="12" fill="rgba(7,15,28,0.85)" stroke="#64b5f6" stroke-width="1.8"/>
+  <!-- left       --> <circle cx="32"   cy="100"  r="12" fill="rgba(7,15,28,0.85)" stroke="#64b5f6" stroke-width="1.8"/>
+  <!-- top-left   --> <circle cx="52"   cy="52"   r="12" fill="rgba(7,15,28,0.85)" stroke="#64b5f6" stroke-width="1.8"/>
+
+  <!-- ── Main gear ring (r=52) ── -->
+  <circle cx="100" cy="100" r="52"
+    fill="rgba(7,15,28,0.80)"
+    stroke="#5ba4e8"
+    stroke-width="2.6"
+    filter="url(#ringGlow)"/>
+
+  <!-- ── Inner decorative ring (r=43) ── -->
+  <circle cx="100" cy="100" r="43"
+    fill="none"
+    stroke="rgba(30,136,229,0.22)"
+    stroke-width="0.9"/>
+
+  <!-- ── Ambient glow behind hub ── -->
+  <circle cx="100" cy="100" r="32" fill="url(#hubAura)"/>
+
+  <!-- ── Hub window circle (r=21) ── -->
+  <circle cx="100" cy="100" r="21"
+    fill="rgba(5,11,21,0.96)"
+    stroke="rgba(100,181,246,0.52)"
+    stroke-width="1.6"/>
+
+  <!-- ── Rising chart line inside hub (clipped) ── -->
+  <g clip-path="url(#hubClip)">
+
+    <!-- Subtle fill area under the chart -->
+    <polygon
+      points="82,120 82,113 90,104 100,108 110,95 117,88 120,120"
+      fill="rgba(30,136,229,0.08)"/>
+
+    <!-- Chart polyline -->
+    <polyline
+      points="82,113 90,104 100,108 110,95 117,88"
+      stroke="url(#chartLine)"
+      stroke-width="2.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      filter="url(#chartGlow)"/>
+
+    <!-- Arrowhead at tip -->
+    <polyline
+      points="113,85 117,88 114,91"
+      stroke="#ffffff"
+      stroke-width="2.2"
+      stroke-linecap="round"
+      stroke-linejoin="round"/>
+
+  </g>
+
+  <!-- ── Tiny center dot ── -->
+  <circle cx="100" cy="100" r="2.2" fill="rgba(100,181,246,0.55)"/>
+
+</svg>

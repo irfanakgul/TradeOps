@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import Footer from '../components/Footer'
 import BrokerSidebar from '../components/BrokerSidebar'
 import { useLanguage } from '../components/LanguageContext'
 import { useAuth } from '../components/AuthContext'
 import { useRuntime } from '../components/RuntimeContext'
+import { useUpdate } from '../components/UpdateContext'
 
 type NotificationRow = {
   user_notification_id: number
@@ -20,6 +22,9 @@ type NotificationRow = {
 export default function NotificationsPage() {
   const { language } = useLanguage()
   const { user } = useAuth()
+  const { needsUpdate, dismissed, release, undismiss, currentVersion } = useUpdate()
+  const navigate = useNavigate()
+  const showUpdateEntry = needsUpdate && dismissed && release != null
   const {
     status,
     startTws,
@@ -163,7 +168,57 @@ export default function NotificationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.length === 0 ? (
+                  {showUpdateEntry && release && (
+                    <tr
+                      className="notification-row-unread clickable-row"
+                      onClick={() => {
+                        // Bring back the banner so the user can hit Details → modal
+                        undismiss()
+                        navigate('/')
+                      }}
+                    >
+                      <td>
+                        <span
+                          className="focus-scope-badge false"
+                          style={{
+                            background: 'rgba(33,150,243,0.18)',
+                            color: '#64b5f6',
+                            borderColor: 'rgba(100,181,246,0.32)',
+                          }}
+                        >
+                          ⬆ {language === 'tr' ? 'Güncelleme' : 'Update'}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 800 }}>
+                        {language === 'tr'
+                          ? `Yeni sürüm v${release.version} — şu anki: v${currentVersion}`
+                          : `New version v${release.version} — current: v${currentVersion}`}
+                      </td>
+                      <td>System</td>
+                      <td>
+                        {release.published_at
+                          ? new Date(release.published_at).toLocaleString(
+                              language === 'tr' ? 'tr-TR' : 'en-US',
+                            )
+                          : '—'}
+                      </td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <div className="focus-bulk-actions">
+                          <button
+                            type="button"
+                            className="sidebar-secondary-btn"
+                            onClick={() => {
+                              undismiss()
+                              navigate('/')
+                            }}
+                          >
+                            {language === 'tr' ? 'Güncelle' : 'Update'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {rows.length === 0 && !showUpdateEntry ? (
                     <tr>
                       <td colSpan={5} className="orders-empty-cell">
                         {language === 'tr' ? 'Bildirim yok.' : 'No notifications.'}

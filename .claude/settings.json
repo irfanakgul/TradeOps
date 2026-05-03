@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk '{print $2, $11, $12}')",
+      "Bash(ps -p 5294 -o pid,ppid,user,command)",
+      "Bash(xargs kill *)",
+      "Bash(pkill -9 -f tradeops_backend)",
+      "Bash(pkill -9 -f tradeops_server)",
+      "Bash(awk '{print $2, $11, $12, $13}')",
+      "Bash(kill -9 49561 49557)",
+      "Bash(npm install *)"
+    ]
+  }
+}

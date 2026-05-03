@@ -29,11 +29,11 @@ class SchedulerService:
 
     def start(self) -> None:
         if self.state.IS_RUNNING:
-            print("[SCHEDULER] Already running")
+            print("[SCHEDULER] Already running",flush=True)
             return
 
         self.state.IS_RUNNING = True
-        print("[SCHEDULER] STARTED")
+        print("[SCHEDULER] STARTED",flush=True)
 
         self.log_service.log(
             LogEvent(
@@ -49,7 +49,7 @@ class SchedulerService:
                 self._tick()
                 time.sleep(15)
         except KeyboardInterrupt:
-            print("[SCHEDULER] KeyboardInterrupt received")
+            print("[SCHEDULER] KeyboardInterrupt received",flush=True)
         finally:
             self.state.IS_RUNNING = False
 
@@ -62,11 +62,11 @@ class SchedulerService:
                 )
             )
 
-            print("[SCHEDULER] STOPPED")
+            print("[SCHEDULER] STOPPED",flush=True)
 
     def stop(self) -> None:
         self.state.IS_RUNNING = False
-        print("[SCHEDULER] STOP REQUESTED")
+        print("[SCHEDULER] STOP REQUESTED",flush=True)
 
     def _handle_forced_sell_trigger(
         self,
@@ -84,8 +84,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] FORCED SELL TRIGGERED | "
-            f"EXCHANGE={exchange.EXCHANGE} | TIME={trigger_time}"
-        )
+            f"EXCHANGE={exchange.EXCHANGE} | TIME={trigger_time}",flush=True)
 
         self.log_service.log(
             LogEvent(
@@ -108,8 +107,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] FORCED SELL RESULT | "
-            f"EXCHANGE={exchange.EXCHANGE} | SUCCESS={result.SUCCESS} | MESSAGE={result.MESSAGE}"
-        )
+            f"EXCHANGE={exchange.EXCHANGE} | SUCCESS={result.SUCCESS} | MESSAGE={result.MESSAGE}",flush=True)
 
         self.log_service.log(
             LogEvent(
@@ -138,8 +136,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] TICK | NOW={now.isoformat()} | "
-            f"ENABLED_EXCHANGES={','.join([x.EXCHANGE for x in enabled_exchanges])}"
-        )
+            f"ENABLED_EXCHANGES={','.join([x.EXCHANGE for x in enabled_exchanges])}",flush=True)
 
         self._handle_buy_prepare_global_trigger(
             enabled_exchanges=enabled_exchanges,
@@ -211,8 +208,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] BUY PREPARE TRIGGERED | "
-            f"EXCHANGES={','.join(exchange_names)} | TIME={current_hhmm}"
-        )
+            f"EXCHANGES={','.join(exchange_names)} | TIME={current_hhmm}",flush=True)
 
         self.log_service.log(
             LogEvent(
@@ -232,8 +228,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] BUY PREPARE RESULT | "
-            f"SUCCESS={result.SUCCESS} | MESSAGE={result.MESSAGE}"
-        )
+            f"SUCCESS={result.SUCCESS} | MESSAGE={result.MESSAGE}",flush=True)
 
         self.log_service.log(
             LogEvent(
@@ -267,8 +262,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] BUY EXECUTION TRIGGERED | "
-            f"EXCHANGE={exchange.EXCHANGE} | TIME={trigger_time}"
-        )
+            f"EXCHANGE={exchange.EXCHANGE} | TIME={trigger_time}",flush=True)
 
         self.log_service.log(
             LogEvent(
@@ -291,8 +285,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] BUY EXECUTION RESULT | "
-            f"EXCHANGE={exchange.EXCHANGE} | SUCCESS={result.SUCCESS} | MESSAGE={result.MESSAGE}"
-        )
+            f"EXCHANGE={exchange.EXCHANGE} | SUCCESS={result.SUCCESS} | MESSAGE={result.MESSAGE}",flush=True)
 
         self.log_service.log(
             LogEvent(
@@ -331,8 +324,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] ACCOUNT SNAPSHOT TRIGGERED | "
-            f"SNAPSHOT_TYPE={snapshot_type} | TIME={trigger_time}"
-        )
+            f"SNAPSHOT_TYPE={snapshot_type} | TIME={trigger_time}",flush=True)
 
         self.log_service.log(
             LogEvent(
@@ -355,8 +347,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] ACCOUNT SNAPSHOT RESULT | "
-            f"SNAPSHOT_TYPE={snapshot_type} | SUCCESS={result.SUCCESS} | MESSAGE={result.MESSAGE}"
-        )
+            f"SNAPSHOT_TYPE={snapshot_type} | SUCCESS={result.SUCCESS} | MESSAGE={result.MESSAGE}",flush=True)
 
         self.log_service.log(
             LogEvent(
@@ -399,8 +390,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] END OF DAY RECONCILE TRIGGERED | "
-            f"EXCHANGES={','.join(exchange_names)} | TIME={current_hhmm}"
-        )
+            f"EXCHANGES={','.join(exchange_names)} | TIME={current_hhmm}",flush=True)
 
         self.log_service.log(
             LogEvent(
@@ -420,8 +410,7 @@ class SchedulerService:
 
         print(
             f"[SCHEDULER] END OF DAY RECONCILE RESULT | "
-            f"SUCCESS={result.SUCCESS} | MESSAGE={result.MESSAGE}"
-        )
+            f"SUCCESS={result.SUCCESS} | MESSAGE={result.MESSAGE}",flush=True)
 
         self.log_service.log(
             LogEvent(
